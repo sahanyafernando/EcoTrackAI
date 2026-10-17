@@ -78,3 +78,15 @@ def:protect incident_human_reviews() -> list[HumanReviewView] { return list_huma
 def:protect review_cluster(proposal_id: str, decision: str, expected_revision: int) -> HumanReviewView {
     return review_cluster_proposal(proposal_id, decision, expected_revision);
 }
+
+import from contracts.response_views { ResponseBoardView, ResponseView }
+import from core.responses { response_board, assign_response }
+import from agents.response_coordination { run_response_coordination }
+def:protect incident_response_board() -> ResponseBoardView { return response_board(); }
+def:protect coordinate_response(incident_id: str, request_id: str) -> RunView {
+    return run_response_coordination(incident_id, request_id);
+}
+def:protect accept_response(incident_id: str, organization_id: str, role: str,
+                           expected_revision: int, run_id: str) -> ResponseView {
+    return assign_response(incident_id, organization_id, role, expected_revision, run_id);
+}

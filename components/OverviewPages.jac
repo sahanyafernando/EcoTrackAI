@@ -29,7 +29,7 @@ def:pub OrganizationOverview(me: AccountView, onNavigate: Callable[[str], None])
             <section className="welcome-card compact"><div><p className="eyebrow">Organization workspace</p><h2>{me.organization.name}</h2><p>Manage your application and organization details.</p><button onClick={lambda { onNavigate("organization"); }}>View organization <Icon name="arrow"/></button></div><div className="hero-leaf"><Icon name="organization"/></div></section>
             <OrganizationStatus status={me.organization.verification_status}/>
             <section className="panel"><h2>Organization at a glance</h2><dl className="detail-grid"><div><dt>Membership</dt><dd>{"Organization admin" if me.organization.created_by == me.root_id else "Organization member"}</dd></div><div><dt>Application status</dt><dd><span className={"badge " + me.organization.verification_status}>{me.organization.verification_status}</span></dd></div><div><dt>Submitted</dt><dd><DateTime value={me.organization.created_at}/></dd></div></dl></section>
-            <section className="panel"><span className="badge planned">Not implemented yet</span><h2>Coordinated response</h2><p className="muted">Incident coordination, cleanup events and volunteer management will appear in their dedicated pages as they become available.</p></section>
+            <section className="panel"><h2>Coordinated response</h2><p className="muted">Verified organizations can view confirmed incidents and their Lead/Support assignments. Central Authority manages assignments.</p><button className="quiet" onClick={lambda { onNavigate("incidents"); }}>View Incidents →</button><p className="muted">Cleanup events and volunteer management are not implemented yet.</p></section>
         </div>}
     </div>
 }

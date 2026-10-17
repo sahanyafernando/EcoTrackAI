@@ -7,6 +7,26 @@ import from core.intelligence {
 }
 import from agents.incident_intelligence { run_intelligence, assess_candidates }
 import from jaclang.byllm.lib { MockLLM }
+import from agents.response_coordination { run_response_coordination, assess_response }
+import from contracts.response_views { ResponseContext, ResponseAssessment }
+
+def:protect fixture_coordination(incident_id: str, request_id: str, mode: str = "positive") -> RunView {
+    def assessor(context: ResponseContext) -> ResponseAssessment {
+        if mode == "failure" { raise RuntimeError("Private provider failure secret"); }
+        lead = context.organizations[0].id if context.existing_lead_id == "" else "";
+        if mode == "alternate" { lead = context.organizations[-1].id; }
+        supports = [item.id for item in context.organizations if item.id != lead];
+        if mode == "duplicate_lead" { lead = context.organizations[0].id; }
+        if mode == "unknown" { supports = ["unknown-organization"]; }
+        output = {"lead_organization_id": lead, "support_organization_ids": supports,
+            "reasoning_summary": "Verified groups fit environmental response; existing assignments were checked."};
+        llm = MockLLM(outputs=[output]);
+        result = assess_response(context, llm);
+        assert len(llm.seen) == 1 and llm.exhausted();
+        return result;
+    }
+    return run_response_coordination(incident_id, request_id, assessor);
+}
 
 # Fixture-only modes never enter the application API.
 def:protect fixture_analysis(request_id: str, mode: str = "positive") -> RunView {

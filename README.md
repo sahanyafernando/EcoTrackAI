@@ -3,7 +3,7 @@
 Jac-powered environmental coordination. **Implemented: authentication, RBAC, organization verification,
 citizen environmental reports with GPS/manual coordinates, and a role-aware
 application shell, authority-triggered Incident Intelligence proposals, and human
-Incident confirmation/rejection (Tasks 1–4).**
+Incident confirmation/rejection and verified-organization response coordination (Tasks 1–5).**
 
 Requires **Jac 0.37.23**. From this directory:
 
@@ -71,7 +71,7 @@ jac run
 ```
 
 See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for test coverage,
-validation results, and remaining manual checks. Organization response, additional agents,
+validation results, and remaining manual checks. Additional agents,
 cleanups, volunteering, notifications, analytics, mobile, and CLI are deferred.
 
 ## Citizen reports and location (Task 2)
@@ -111,7 +111,7 @@ content validation, and authenticated image serving need a separate implementati
 `evidence_ref` is reserved and empty; arbitrary evidence URLs are not accepted.
 
 Related-report intelligence is implemented separately in Task 3 below.
-Organization response remains deferred.
+Organization response coordination is described in Task 5 below.
 
 ## Application pages (Task 2.5)
 
@@ -326,5 +326,46 @@ demo maintenance. Multi-worker load has not been certified.
 human audit decisions and confirmed Incident evidence. Use a fresh isolated demo
 database for another end-to-end rehearsal after confirmation.
 
-Split/merge/edit/reopen workflows, organization response coordination, cleanup
+Split/merge/edit/reopen workflows, cleanup
 events and volunteers remain deferred. No new environment configuration is needed.
+
+## Response coordination (Task 5)
+
+Use genuine organization accounts: register, apply from Profile, and have Central
+Authority verify them in Organization Review. No synthetic organization accounts,
+passwords or auto-verification are introduced.
+
+After confirming an Incident, open **Authority → Incident Review → Response
+Coordination**. Run coordination for the Incident. Using the existing server model
+and provider-key settings, one compact native byLLM call compares the category,
+severity and up to eight observation summaries with up to 25 verified organizations'
+names/descriptions. Already assigned organizations are excluded. Recommendations
+are advisory and contain exact organization IDs and concise rationale. Missing model
+configuration, invalid output or provider failures produce a failed audited run
+without assignments. With no eligible organizations, no model call is made.
+
+Choose **Accept Lead** or **Add Support** from the recommendation. Only Central
+Authority can assign responses. Each acceptance checks the current Incident revision,
+current verification status, recommendation membership/role and existing responses.
+There is at most one active Lead per Incident and one active response per organization
+per Incident; several distinct Support organizations may participate. A Lead already
+present forces subsequent recommendations toward Support. Request IDs prevent
+transport retries from repeating the same coordination run. The agent receives no
+assignment, organization-verification, report-mutation or Incident-confirmation tool.
+
+**Organization → Incidents** now shows confirmed Incidents, category, severity,
+supporting-report count, current Lead, Supports and the organization's own role.
+The MVP shows all confirmed Incidents to verified organizations; no service-area
+targeting is implemented. This API omits raw report IDs/text and citizen information.
+Pending/rejected/suspended organizations receive a restriction message. Verification
+does not grant access to raw Incoming Reports or private authority audit endpoints.
+Support assignment is Authority-controlled; self-service support offers are deferred.
+
+**Agent Activity** includes Response Coordination runs and decision records, with
+Incident ID, eligibility count, existing Lead check, proposed IDs, model/request
+metadata, status and public rationale. Original reports and organization verification
+remain unchanged. Lead/Support assignments persist across sessions and restarts.
+
+Withdrawal/reassignment, automatic replacement of a suspended Lead, service areas,
+cleanup events, volunteers and Task 6 are deferred. Suspension revokes organization
+access immediately; historical assignments are retained and do not authorize members.

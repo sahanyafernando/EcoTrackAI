@@ -14,6 +14,7 @@ import from .components.ReportPanel { ReportPanel }
 import from .components.ReportListPage { ReportListPage }
 import from .components.PlannedPage { PlannedPage }
 import from .components.IntelligencePage { IntelligencePage }
+import from .components.ResponseBoard { ResponseBoard }
 
 def:pub app -> JsxElement {
     has me: AccountView | None = None,
@@ -70,7 +71,7 @@ def:pub app -> JsxElement {
             {activePage == "profile" and <ProfilePage me={me} context={contextName} onNavigate={navigate}/>}
             {activePage == "audit" and context == "authority" and <AuditPage items={items} error={organizationError} loading={dataLoading}/>}
             {activePage == "cleanups" and <PlannedPage title="Cleanup Events" description={"This page will allow citizens to discover and join environmental cleanup events." if context == "citizen" else "Organizations will use this page to plan and manage environmental cleanup events."}/>}
-            {activePage == "incidents" and context == "organization" and <PlannedPage title="Incident coordination" icon="incidents" description="Incident coordination is not implemented yet. Verified organizations will use this page to review confirmed incidents and coordinate lead/support responses."/>}
+            {activePage == "incidents" and context == "organization" and <ResponseBoard key={me.root_id}/>}
             {activePage == "volunteers" and context == "organization" and <PlannedPage title="Volunteers" icon="people" description="Organizations will use this page to coordinate volunteer participation and readiness for cleanup events."/>}
             {activePage == "incident_review" and context == "authority" and <IntelligencePage key={me.root_id + "review"} onDemoChanged={refresh}/>}
             {activePage == "agents" and context == "authority" and <IntelligencePage key={me.root_id + "activity"} activity={True}/>}

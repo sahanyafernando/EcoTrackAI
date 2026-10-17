@@ -1,7 +1,7 @@
 """Authority confirmation boundary. Agent output remains a proposal until reviewed."""
 import from uuid { uuid5, NAMESPACE_URL }
 import from jaclang { JacRuntime as Jac }
-import from core.domain { require_capability, is_authority, now }
+import from core.domain { require_capability, is_authority, can_read_responses, now }
 import from core.reports { REPORT_CATEGORIES, incoming_reports }
 import from core.intelligence { IncidentClusterProposal, IntelligenceIndex }
 import from agents.incident_intelligence { analysis_lock }
@@ -12,7 +12,8 @@ node Incident {
         updated_at: str, confirmed_at: str, confirmed_by: str, source_proposal_id: str,
         status: str = "confirmed", revision: int = 1;
     def __jac_access__ -> AccessLevel {
-        if is_authority() { return AccessLevel.READ; }
+        if is_authority() { return AccessLevel.WRITE; }
+        if can_read_responses() { return AccessLevel.READ; }
         return AccessLevel.NO_ACCESS;
     }
 }
@@ -26,7 +27,7 @@ node HumanIncidentReview {
 }
 edge IncidentIndex: any --> any {
     def __jac_access__ -> AccessLevel {
-        if is_authority() { return AccessLevel.READ; }
+        if can_read_responses() { return AccessLevel.READ; }
         return AccessLevel.NO_ACCESS;
     }
 }

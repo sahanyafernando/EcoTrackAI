@@ -5,15 +5,17 @@ import from endpoints { IntelligenceView, RunView, incident_intelligence_state, 
 import from .DateTime { DateTime }
 import from .ReportCard { ReportCard }
 import from .Icon { Icon }
+import from .ResponseBoard { ResponseBoard }
 
 def:pub RunSummary(item: RunView) -> JsxElement {
     <article>
         <div className="actions"><h3>{item.agent_name}</h3><span className={"badge " + ("rejected" if item.status == "failed" else ("pending" if item.status == "running" else "verified"))}>{item.status}</span></div>
         <p className="muted"><DateTime value={item.started_at}/> · {item.model}</p>
-        <div className="button-row"><span>Reports examined: <strong>{item.reports_examined}</strong></span><span>Candidate relationships: <strong>{item.candidate_relationships}</strong></span><span>Candidate groups: <strong>{item.candidate_groups_examined}</strong></span><span>LLM requests: <strong>{item.llm_requests}</strong></span><span>Proposals created: <strong>{item.proposals_created}</strong></span></div>
+        {item.incident_id == "" and <div className="button-row"><span>Reports examined: <strong>{item.reports_examined}</strong></span><span>Candidate relationships: <strong>{item.candidate_relationships}</strong></span><span>Candidate groups: <strong>{item.candidate_groups_examined}</strong></span><span>LLM requests: <strong>{item.llm_requests}</strong></span><span>Proposals created: <strong>{item.proposals_created}</strong></span></div>}
+        {item.incident_id != "" and <div><p className="details">Incident: {item.incident_id}</p><p>Verified organizations considered: {item.organizations_considered} · LLM requests: {item.llm_requests}</p><p className="details">Existing Lead check: {item.existing_lead_id if item.existing_lead_id != "" else "No active lead"}</p></div>}
         <p>{item.summary}</p>
         {item.error_summary != "" and <p role="alert" className="notice error">{item.error_summary}</p>}
-        <details><summary>Run details</summary><p className="details">Run {item.id}</p><p>Radius: {item.configuration.radius_meters} m · Time window: {item.configuration.time_window_hours} hours · Confidence threshold: {round(item.configuration.confidence_threshold * 100)}%</p><p>Limits: {item.configuration.max_reports} reports, {item.configuration.max_groups} groups, {item.configuration.max_group_size} reports per group.</p>{item.completed_at != "" and <p>Completed <DateTime value={item.completed_at}/></p>}</details>
+        <details><summary>Run details</summary><p className="details">Run {item.id}</p>{item.incident_id == "" and <div><p>Radius: {item.configuration.radius_meters} m · Time window: {item.configuration.time_window_hours} hours · Confidence threshold: {round(item.configuration.confidence_threshold * 100)}%</p><p>Limits: {item.configuration.max_reports} reports, {item.configuration.max_groups} groups, {item.configuration.max_group_size} reports per group.</p></div>}{item.completed_at != "" and <p>Completed <DateTime value={item.completed_at}/></p>}</details>
     </article>
 }
 
@@ -93,7 +95,7 @@ def:pub IntelligencePage(activity: bool = False, onDemoChanged: Callable[[], Non
             {loading and <p role="status">Loading intelligence records…</p>}
             {loadError != "" and <p className="notice error" role="alert">{loadError}</p>}
             {state is not None and loadError == "" and len(state.runs) == 0 and <div className="empty-state"><Icon name="activity"/><h3>No analysis runs yet</h3><p>Configure a hosted model and provider key on the server, then run Incident Intelligence.</p></div>}
-            {state is not None and not activity and len(state.runs) > 0 and <div><h3>Last analysis</h3><RunSummary item={state.runs[0]}/></div>}
+            {state is not None and not activity and len(state.runs) > 0 and <div><h3>Latest agent run</h3><RunSummary item={state.runs[0]}/></div>}
         </section>
         {state is not None and loadError == "" and not activity and <section className="panel"><h2>Cluster Proposals ({len(state.proposals)})</h2><p className="muted">Review source evidence before confirming one Incident. Model confidence is a suggestion, not verified truth. Original reports remain unchanged.</p>
             {len(state.proposals) == 0 and <div className="empty-state"><Icon name="incidents"/><h3>No cluster proposals</h3><p>Only real, validated model output appears here. Nearby reports may still describe different problems.</p></div>}
@@ -127,7 +129,8 @@ def:pub IntelligencePage(activity: bool = False, onDemoChanged: Callable[[], Non
                 <p className="details">Confirmed by {item.confirmed_by} · <DateTime value={item.confirmed_at}/></p>
             </article> for item in incidents]}
         </section>}
-        {state is not None and loadError == "" and activity and <section className="panel"><h2>Incident Intelligence runs</h2>
+        {not activity and <ResponseBoard key={str(len(incidents))}/>}
+        {state is not None and loadError == "" and activity and <section className="panel"><h2>Agent runs</h2>
             {[<div key={item.id}><RunSummary item={item}/><details><summary>Decision records</summary>
                 {[<article key={decision.id}><h4>{decision.decision_type.replace("_", " ")}</h4><p className="details">{decision.reasoning_summary}</p><p className="details">Reports: {", ".join(decision.report_ids)}</p>{decision.confidence is not None and <p>Model confidence: {round(decision.confidence * 100)}%</p>}
                     {[<p key={signal.first_id + signal.second_id} className="details">{signal.first_id} ↔ {signal.second_id}: {signal.distance_meters} m · {signal.time_difference_hours} hours</p> for signal in decision.signals]}
@@ -142,6 +145,6 @@ def:pub IntelligencePage(activity: bool = False, onDemoChanged: Callable[[], Non
                 {item.incident_id != "" and <p className="details">Incident: {item.incident_id}</p>}
             </article> for item in humanReviews]}
         </section>}
-        {activity and <section className="panel"><span className="badge planned">Not implemented yet</span><h3>Additional agents</h3><p className="muted">Coordinator, response coordination, cleanup and volunteer agents are deferred.</p></section>}
+        {activity and <section className="panel"><span className="badge planned">Not implemented yet</span><h3>Additional agents</h3><p className="muted">Coordinator, cleanup and volunteer agents are deferred.</p></section>}
     </div>
 }

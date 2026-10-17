@@ -204,7 +204,8 @@ node AgentRun {
         agent_name: str = "Incident Intelligence Agent", started_at: str = "", completed_at: str = "",
         status: str = "running", reports_examined: int = 0, candidate_relationships: int = 0,
         candidate_groups_examined: int = 0, llm_requests: int = 0,
-        proposals_created: int = 0, error_summary: str = "", summary: str = "";
+        proposals_created: int = 0, error_summary: str = "", summary: str = "",
+        incident_id: str = "", organizations_considered: int = 0, existing_lead_id: str = "";
     def __jac_access__ -> AccessLevel {
         if is_authority() { return AccessLevel.READ; }
         return AccessLevel.NO_ACCESS;
@@ -242,7 +243,8 @@ obj RunView {
         started_at: str, completed_at: str, status: str,
         reports_examined: int, candidate_relationships: int, candidate_groups_examined: int,
         llm_requests: int, proposals_created: int,
-        error_summary: str, summary: str;
+        error_summary: str, summary: str,
+        incident_id: str = "", organizations_considered: int = 0, existing_lead_id: str = "";
 }
 obj IntelligenceView {
     has proposals: list[ProposalView], runs: list[RunView], decisions: list[DecisionView];
@@ -255,7 +257,8 @@ def run_view(item: AgentRun) -> RunView {
         candidate_relationships=item.candidate_relationships,
         candidate_groups_examined=item.candidate_groups_examined, llm_requests=item.llm_requests,
         proposals_created=item.proposals_created,
-        error_summary=item.error_summary, summary=item.summary);
+        error_summary=item.error_summary, summary=item.summary, incident_id=item.incident_id,
+        organizations_considered=item.organizations_considered, existing_lead_id=item.existing_lead_id);
 }
 
 def intelligence_state() -> IntelligenceView {

@@ -602,3 +602,77 @@ activity, and verify Incoming Reports/My Reports still show every source. Browse
 click flows and live-model quality were not automated for Task 4. No new environment
 variables are required. Split/merge/reopen/override, organization response, cleanups,
 volunteers and Task 5 remain deferred; multi-worker concurrency is not certified.
+
+## Task 5 — Response Coordination and Lead/Support organizations
+
+Implemented `core/responses.jac`, `agents/response_coordination.jac`, canonical
+client-safe response contracts and a shared `ResponseBoard` component. Native
+IncidentResponse nodes record Incident/organization IDs, organization name, role,
+active status, creation/update/assignment timestamps, assigning authority and revision.
+The same organization cannot hold duplicate active responses for an Incident.
+
+Only Central Authority can run coordination and accept recommendations. One compact
+native byLLM call receives the confirmed Incident category/severity, bounded source
+summaries, existing assignments and up to 25 verified organizations. It returns a
+typed proposed Lead, Supports and short public rationale. Referenced organizations
+must belong to the supplied eligible set. An existing Lead prohibits another Lead
+recommendation. Missing configuration, provider errors and invalid recommendations
+create failed audited runs without assignments. No eligible organizations means no
+model call. Existing provider environment settings are reused; no new keys/flags.
+
+Human acceptance rechecks verified status, recommendation membership/role, existing
+responses and the Incident revision. Assignment touches that persisted revision as
+an optimistic concurrency guard and commits a canonical per-Incident/organization
+response. The shared process lock also serializes local analysis/review/assignment.
+There is at most one active Lead and multiple distinct Supports. The model has no
+assignment, verification, report mutation or Incident confirmation tools.
+
+Authority Incident Review shows current Lead/Supports, Run Response Coordination,
+recommendations, Accept Lead and Add Support. Organization → Incidents now displays
+confirmed Incident summaries and the organization's Lead/Support/Unassigned role.
+All verified organizations see the MVP incident queue; geographic targeting is
+deferred. This API omits raw report IDs/text and citizen details. Pending/rejected/
+suspended organizations see a restriction; raw report and authority audit access
+remain protected. Organization self-assignment is not enabled.
+
+Existing AgentRun/AgentDecision persistence and Agent Activity show response runs,
+Incident ID, eligible-organization count, existing Lead check, suggested IDs,
+status/model/request metadata and concise public rationale. Assignment nodes retain
+the human actor/time separately. No demo organizations or passwords were introduced.
+
+Six offline integration tests use genuine native auth/application/verification/
+confirmation plus native MockLLM. Coverage includes eligibility, one Lead, a second
+valid independently recommended Lead being refused, multiple Supports, duplicates,
+stale eligibility after suspension, organization queue roles/privacy, persistence,
+anonymous/Citizen/all organization role denials, existing-Lead support guidance,
+request replay, invalid output/provider failure and candidate-free completion.
+Reports, organization verification and confirmed Incident count remain unchanged by
+recommendation/assignment; only response-assignment Incident revision/time advances.
+
+Validation:
+
+- `jac check --nowarn`: exit 0, 1 passed in 11.39s.
+- Focused Task 5 tests: exit 0, 6 passed in 27.54s.
+- `JAC_TEST_JOBS=0 jac test`: 70 passed in 119.35s; no live provider calls.
+- `jac build --as client`: exit 0, bundle compiled in 3.9s.
+- `git diff --check`: exit 0.
+- Reused an existing `jac run`: App http://localhost:8003 and API :8002. App and
+  ResponseBoard module return HTTP 200; anonymous protected response API returns
+  HTTP 401; no client diagnostic marker. No additional server was launched.
+
+Checks caught missing braces in the capability/test fixture helpers and frontend
+deletion/host-string typing errors during implementation. These were corrected;
+final checks and both test runs above passed without disabling checks or weakening
+types. All new implementation/test source is Jac.
+
+Manual browser/live-model follow-up: verify at least three genuine organization
+accounts, confirm an Incident, run coordination as Authority, inspect rationale,
+accept one Lead and two Supports, refresh/relogin each organization and inspect its
+role. Rerun coordination after Lead assignment to see Support-only recommendations.
+Browser click flows and hosted model quality were not automated for this task.
+
+Deferred: self-service Support offers, withdrawal/handover/reassignment, automatic
+replacement of a suspended Lead, detailed service-area/skill matching, cleanup
+events, volunteers and Task 6. Suspension removes organization access immediately;
+historical assignments remain reserved and do not grant member capabilities.
+Deployment-wide concurrent load has not been certified.

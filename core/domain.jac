@@ -132,17 +132,22 @@ def capabilities() -> list[str] {
     result = ["organization:apply", "organization:read_own", "organization:edit_pending",
               "report:create", "report:read_own"];
     if is_authority() {
-        result += ["organization:verify", "organization:suspend", "audit:read", "report:read_all", "agent:run_intelligence", "agent:read", "demo:manage", "incident:review_cluster", "incident:confirm", "incident:read"];
+        result += ["organization:verify", "organization:suspend", "audit:read", "report:read_all", "agent:run_intelligence", "agent:read", "demo:manage", "incident:review_cluster", "incident:confirm", "incident:read", "response:read", "response:assign", "agent:coordinate_response"];
     }
     org = own_organization();
     if org is not None and org.verification_status == "verified" {
-        result += ["organization:verified_member"];
+        result += ["organization:verified_member", "response:read"];
     }
     return result;
 }
 
 def require_capability(capability: str) -> None {
     if capability not in capabilities() { raise PermissionError("Forbidden: " + capability); }
+}
+
+def can_read_responses() -> bool {
+    if jid(root) == jid(root.shared) or jid(root) == str(Jac.get_context().system_root.id) { return False; }
+    return "response:read" in capabilities();
 }
 
 def org_view(org: Organization) -> OrganizationView {

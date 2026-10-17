@@ -27,7 +27,7 @@ def assess_candidates(groups: list[CandidateGroup], llm: Model | MockLLM) -> lis
     return assess(evidence);
 }
 
-def assess_with_model(groups: list[CandidateGroup]) -> list[ClusterAssessment] {
+def configured_model() -> Model {
     model = os.environ.get("BYLLM_DEFAULT_MODEL", "").strip();
     if not model { raise IntelligenceConfigurationError("Set BYLLM_DEFAULT_MODEL and its provider API key on the server before running analysis."); }
     key_name = "OPENAI_API_KEY";
@@ -41,7 +41,10 @@ def assess_with_model(groups: list[CandidateGroup]) -> list[ClusterAssessment] {
             raise IntelligenceConfigurationError("Missing " + key_name + ". Configure the provider key on the server.");
         }
     }
-    return assess_candidates(groups, Model(model_name=model));
+    return Model(model_name=model);
+}
+def assess_with_model(groups: list[CandidateGroup]) -> list[ClusterAssessment] {
+    return assess_candidates(groups, configured_model());
 }
 
 def record_decision(run: AgentRun, group: CandidateGroup, decision: str,
@@ -67,7 +70,7 @@ def run_intelligence(request_id: str,
         memory.read_barrier();
         memory.ensure_writable_txn();
         for previous in [root.shared ->:IntelligenceIndex:-> [?:AgentRun]] {
-            if previous.requested_by == jid(root) and previous.request_id == request_id { return run_view(previous); }
+            if previous.agent_name == "Incident Intelligence Agent" and previous.requested_by == jid(root) and previous.request_id == request_id { return run_view(previous); }
         }
         config = intelligence_config();
         run = root ++> AgentRun(requested_by=jid(root), request_id=request_id,
