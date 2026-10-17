@@ -16,6 +16,8 @@ test "report lifecycle ownership authority and organization isolation" {
             assert rpc(client, "my_reports") == [];
             created = rpc(client, "create_report", body);
             assert created["id"] != "";
+            # RPC hydration must name the same leaf contract used by every client.
+            assert "contracts/report_views.jac" in created["_jac_type_id"];
             assert created["status"] == "submitted";
             assert created["revision"] == 1;
             assert created["submitted_at"] == created["created_at"];
@@ -141,4 +143,16 @@ test "client workspace state cannot grant authority capabilities" {
             assert before["capabilities"] == after["capabilities"];
         } finally { client.close(); }
     }
+}
+
+test "report services RPCs and intelligence share the canonical ReportView identity" {
+    import from contracts.report_views { ReportView }
+    import core.reports as report_services;
+    import endpoints as rpc_module;
+    import core.intelligence as intelligence_module;
+    import agents.tools as tools_module;
+    assert report_services.ReportView is ReportView;
+    assert rpc_module.ReportView is ReportView;
+    assert intelligence_module.ReportView is ReportView;
+    assert tools_module.ReportView is ReportView;
 }

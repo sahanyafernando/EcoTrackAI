@@ -1,4 +1,5 @@
 """Authenticated RPC boundary. All policy and mutations live in Jac core."""
+import from contracts.report_views { ReportView }
 import from core.domain {
     AccountView, OrganizationView, Organization, OrganizationIndex,
     ensure_profile, own_organization, capabilities, org_view,
@@ -35,7 +36,7 @@ def:protect review(organization_id: str, decision: str, expected_revision: int) 
 
 
 import from core.reports {
-    ReportView, REPORT_CATEGORIES, submit_report, own_reports, incoming_reports, inspect_report
+    REPORT_CATEGORIES, submit_report, own_reports, incoming_reports, inspect_report
 }
 
 def:protect report_categories() -> list[str] {
@@ -53,3 +54,18 @@ def:protect my_reports() -> list[ReportView] { return own_reports(); }
 def:protect all_reports() -> list[ReportView] { return incoming_reports(); }
 
 def:protect get_report(report_id: str) -> ReportView { return inspect_report(report_id); }
+
+import from core.intelligence { IntelligenceView, RunView, intelligence_state }
+import from agents.incident_intelligence { run_intelligence }
+
+def:protect incident_intelligence_state() -> IntelligenceView { return intelligence_state(); }
+
+def:protect run_incident_intelligence(request_id: str) -> RunView {
+    return run_intelligence(request_id);
+}
+
+import from core.demo_dataset { DemoState, DemoResult, demo_state, load_demo_dataset, clear_demo_dataset }
+
+def:protect demo_dataset_status() -> DemoState { return demo_state(); }
+def:protect load_demo() -> DemoResult { return load_demo_dataset(); }
+def:protect clear_demo() -> DemoResult { return clear_demo_dataset(); }

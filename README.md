@@ -2,7 +2,7 @@
 
 Jac-powered environmental coordination. **Implemented: authentication, RBAC, organization verification,
 citizen environmental reports with GPS/manual coordinates, and a role-aware
-application shell (Tasks 1–2.5).**
+application shell, and authority-triggered Incident Intelligence cluster proposals (Tasks 1–3).**
 
 Requires **Jac 0.37.23**. From this directory:
 
@@ -70,7 +70,7 @@ jac run
 ```
 
 See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for test coverage,
-validation results, and remaining manual checks. Incident processing, agents,
+validation results, and remaining manual checks. Confirmed incidents, additional agents,
 cleanups, volunteering, notifications, analytics, mobile, and CLI are deferred.
 
 ## Citizen reports and location (Task 2)
@@ -109,8 +109,8 @@ Image upload is deferred: Jac supports multipart upload, but private storage,
 content validation, and authenticated image serving need a separate implementation.
 `evidence_ref` is reserved and empty; arbitrary evidence URLs are not accepted.
 
-Task 3 will address related-report/duplicate intelligence and incident review.
-No incident, cluster, LLM call, agent, or organization response flow is created here.
+Related-report intelligence is implemented separately in Task 3 below.
+Organization response and confirmed Incident workflows remain deferred.
 
 ## Application pages (Task 2.5)
 
@@ -124,7 +124,7 @@ the Citizen workspace. Navigation does not grant permissions; core RBAC is uncha
 - **Organization:** Overview with actual application status, Organization details
   and pending edits, Incidents (planned), Cleanup Events (planned), Volunteers (planned).
 - **Central Authority:** Authority Overview with real counts, Incoming Reports,
-  Organization Review, Incident Review (planned), Agent Activity (planned), Audit.
+  Organization Review, Incident Review, Agent Activity, Audit.
   Audit shows only each organization's latest available decision metadata; full
   audit history is marked as not implemented yet.
 
@@ -138,3 +138,164 @@ in Jac without a new router/framework; reload recovers the session at Overview.
 The report form stays mounted while switching views to preserve the current draft
 and GPS confirmation; logout clears the authenticated view. Dates display in your
 browser's locale/timezone. Use Refresh to reload server account/data changes.
+
+## Incident Intelligence (Task 3)
+
+**Report ≠ Incident.** Only Central Authority can run intelligence or read proposals
+and agent audit records. Citizens and organization accounts retain their existing
+permissions. A model can suggest a report cluster, category and severity; it cannot
+change reports, verify organizations, promote users or create a confirmed Incident.
+Task 4 will add human review/accept/reject/split and confirmed Incident creation.
+
+Install the native byLLM capability's hosted-provider dependencies with `jac install`.
+Choose a supported provider in the **server environment**, for example:
+
+```bash
+export BYLLM_DEFAULT_MODEL='gemini/gemini-3.8-flash'
+export GOOGLE_API_KEY='your-provider-key'
+# Keep your existing ECOTRACK_AUTHORITY_ROOT_IDS configuration.
+jac run
+```
+
+Use your provider's available model ID. This integration also accepts OpenAI
+`gpt-...` / `openai/...` models with `OPENAI_API_KEY`, and `anthropic/...` with
+`ANTHROPIC_API_KEY`. Gemini's `GEMINI_API_KEY` alias is also accepted by the installed
+runtime. Provider keys stay on the server and are never copied into application nodes.
+An `.env.example` file is a template, not an automatic environment loader.
+See the [official byLLM reference](https://www.jac-lang.org/reference/plugins/byllm/).
+No live model is needed for ordinary authentication, reports or organization flows.
+Missing configuration and provider/output failures produce a persisted failed run,
+not fabricated proposals. Candidate-free runs finish without contacting a model.
+
+Jac preprocessing uses Haversine distance, absolute submission-time proximity,
+same or explicitly compatible categories, location-text overlap and lexical
+description overlap. A pair must be geographically and temporally within bounds,
+have compatible categories, meet at least one configurable text-overlap threshold,
+and meet the combined deterministic score. Category equality alone never creates
+a relationship. The built-in compatibility mapping is limited to closely related
+waste/damage categories and is symmetric. Defaults:
+
+| Server variable | Default | Accepted range |
+| --- | --- | --- |
+| `ECOTRACK_DUPLICATE_RADIUS_METERS` | 250 | >0–10,000 meters |
+| `ECOTRACK_DUPLICATE_TIME_WINDOW_HOURS` | 72 | >0–8,760 hours |
+| `ECOTRACK_DUPLICATE_LOCATION_OVERLAP` | 0.25 | 0–1 |
+| `ECOTRACK_DUPLICATE_DESCRIPTION_OVERLAP` | 0.20 | 0–1 |
+| `ECOTRACK_DUPLICATE_MIN_SCORE` | 0.50 | 0–1 |
+| `ECOTRACK_CLUSTER_CONFIDENCE_THRESHOLD` | 0.70 | 0–1 |
+
+Analysis considers the newest 200 eligible reports, at most 10 candidate groups,
+and at most 8 reports per group. Complete-link greedy grouping requires **every pair**
+to meet the configured spatial, temporal, category and text-evidence rules; it does
+not follow arbitrarily long proximity chains. It creates candidate groups only and
+never merges or changes Report nodes. Groups are disjoint per run; semantic rejection
+does not search every possible subset. Existing proposals with exactly the same
+sorted report set skip semantic review.
+
+Jac sends all unreviewed candidate groups together in one native byLLM invocation.
+Each compact group includes report IDs, descriptions, categories, location text and
+Jac-computed pair distances, time differences, category relation, lexical overlaps
+and compatibility scores. Gemini does not retrieve report context or calculate
+distance/time. It returns one typed `ClusterAssessment` per candidate group:
+candidate group ID, same-incident decision, confidence, concise public rationale,
+matching/conflicting signals, and suggested category/severity. Jac validates the
+complete batch—including exact, unique group IDs and every structured field—before
+creating any proposal, then revalidates real report references/snapshots before
+writing `pending_review` proposals. A negative assessment creates no proposal.
+Confidence is a suggestion, not verified truth.
+
+Run observability includes raw reports examined, deterministic candidate
+relationships, candidate groups, batched LLM request count and proposals created.
+
+Open **Authority → Incident Review → Run Incident Intelligence**. The page displays
+real run counters, persisted proposals, source reports, distances, and individual
+OpenStreetMap marker links. No third-party map loads automatically. **Agent Activity**
+shows runs and concise decision records. These records include configuration/model,
+times, status, candidate signals and public rationale; private internal reasoning is
+not stored by the application. Report ownership, status and revisions remain unchanged.
+Request IDs prevent transport retries from replaying paid work. Analysis is serialized
+within each server process; deployment-wide concurrency/load is not certified.
+If the process terminates mid-run, its last record may remain `running`; inspect
+activity and explicitly start a new request after recovery. No background scheduler
+or automatic retry of costly analysis is installed.
+
+For a live demonstration, create reports from three separate citizen accounts near
+one bridge, for example `(6.9271,79.8612)`, `(6.9274,79.8612)` and
+`(6.9277,79.8612)`, all `illegal_dumping` within 72 hours:
+
+- “Large garbage pile beside the canal near the bridge”
+- “Someone dumped plastic and rubbish next to the canal bridge”
+- “Waste dumped beside same bridge and waterway”
+
+From a fourth account submit `blocked_drain` several kilometres away, for example
+`(6.9900,79.9000)`. Login as configured Authority and run analysis. The first three
+can yield a high-confidence proposal; the fourth must be excluded deterministically.
+Model output is not guaranteed. Inspect signals and source observations; do not treat
+it as authority confirmation. Reports are never seeded automatically; the optional
+synthetic dataset is described below.
+
+Normal `JAC_TEST_JOBS=0 jac test` uses injected assessments and native `MockLLM`,
+including real structured-output parsing for a single batched multi-group response.
+It verifies one model invocation for the four deterministic demo groups and never
+requires provider keys or paid calls. `intelligence_test_app.jac` is an isolated test
+entry point; production `main.jac` does not import it or expose fixture controls.
+
+## Optional synthetic demo dataset
+
+Demo loading/clearing is **disabled by default**. To demonstrate the existing agent
+with 16 observations, configure the server before starting it (restart an existing
+server with these exports rather than launching another copy):
+
+```bash
+export ECOTRACK_ENABLE_DEMO_SEED=true
+export ECOTRACK_AUTHORITY_ROOT_IDS='your-existing-authority-account-root-id'
+export BYLLM_DEFAULT_MODEL='gemini/gemini-3.8-flash'
+read -rsp 'Google provider API key: ' GOOGLE_API_KEY; echo
+export GOOGLE_API_KEY
+jac run
+```
+
+The model/key are needed for live analysis, not for loading or viewing the dataset.
+Use the same alternative provider settings documented above if appropriate. These
+are shell environment settings; copying `.env.example` does not load them automatically.
+
+Login as that authority and open **Incident Review → Load Demo Dataset**. The page
+shows **16 Demo Reports Loaded** from persisted state. Repeating Load returns
+“Demo dataset already loaded.” Then open **Incoming Reports** to see all 16 **Demo**
+badges, descriptions, categories, coordinates, timestamps and statuses. Existing
+Citizen reports remain visible alongside them. Return to Incident Review and click
+**Run Incident Intelligence**: Jac preprocessing typically reduces the 16 observations
+to four complete-link candidate groups, followed by one batched Gemini semantic
+request for those groups. This can produce approximately four real persisted
+**Cluster Proposals**, with actual counts and source IDs. No proposals
+or expected memberships are seeded. The original 16 reports remain visible afterward.
+
+The fictional Sri Lankan-style observations cover canal-side illegal dumping,
+a blocked roadside drain/flooding near a tea shop, stream contamination at bathing
+steps, and overflowing public waste bins by a market bus halt. Each has four natural
+wordings and appropriate category. Within-group distances are approximately 20–90m;
+locations are several kilometres apart between groups. Submission times span less
+than two hours. These are synthetic examples, not allegations about actual locations.
+
+Reports use `source_type="demo_seed"`, `demo_dataset="incident-intelligence-demo-v1"`.
+Ordinary reports default to `source_type="citizen"`, with no dataset ID; clients
+cannot set provenance through the normal report endpoint. Fixtures live under a
+platform dataset node owned by the loading authority, use a synthetic reporter
+reference, and do not create users or appear in that authority's personal My Reports.
+All 16 share the same provenance metadata; no case labels or expected cluster IDs
+are passed to the production agent.
+
+**Clear Demo Dataset** is available to the authority that loaded it while the flag
+is enabled. It removes only manifest-identified synthetic reports, demo-only
+proposals/decisions and safely attributable demo-only runs. Genuine reports and
+mixed/unattributable run history are retained. Cleanup refuses the whole operation
+before deleting anything if a proposal/decision mixes synthetic and genuine evidence
+or another authority owns related records. Use the same authority account for
+load/analyse/clear, preferably in an isolated demo database. Clearing and loading
+again creates fresh report IDs, preserving the meaning of retained historical IDs.
+Disabling the flag hides controls and blocks load/clear; it does not hide or delete
+already loaded reports or their Demo badges.
+
+This facility shares the existing per-process analysis lock, so local analysis and
+dataset maintenance cannot overlap. Multi-worker deployment remains outside the
+current validation scope. No Task 4 confirmation actions are included.

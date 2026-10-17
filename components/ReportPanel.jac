@@ -1,5 +1,6 @@
 """Jac-native report form and one-shot browser GPS capture."""
-import from endpoints { ReportView, report_categories, create_report }
+import type from contracts.report_views { ReportView }
+import from endpoints { report_categories, create_report }
 import from .ReportCard { LocationLink }
 
 def:pub ReportPanel(onSaved: Callable[[ReportView], None]) -> JsxElement {

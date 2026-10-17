@@ -269,3 +269,282 @@ physical GPS over HTTPS (automated GPS used emulation). Production deployment,
 multi-worker load and exhaustive assistive-technology testing remain unverified.
 Task 3 AI/incident intelligence, clustering, agents, cleanups, volunteers, and
 notifications remain deferred. No Task 3 domain behavior was added.
+
+## Task 3 — Incident Intelligence proposals
+
+Task 3 supersedes the historical deferrals above for duplicate-candidate intelligence,
+Incident Review and Incident Intelligence Agent activity. Confirmed Incidents and
+human acceptance/rejection/splitting remain Task 4; original Report nodes stay intact.
+
+Created:
+
+- `core/intelligence.jac`: configuration, Haversine/pair signals, complete-link
+  grouping, typed ClusterAssessment, guarded proposal writes, persistent
+  IncidentClusterProposal/AgentRun/AgentDecision, authority-only views/index ACLs.
+- `agents/tools.jac`: candidate-scoped current report context, deterministic
+  distance, lexical overlap. Each tool rechecks capability and authorized scope.
+- `agents/incident_intelligence.jac`: authority-triggered observe/analyze/reason/
+  propose/verify/record pipeline and Jac-native `by llm` integration.
+- `components/IntelligencePage.jac`: Incident Review and Agent Activity, reusing the
+  existing shell/theme/report cards, date display and OpenStreetMap marker links.
+- `tests/intelligence.jac`, its test annex, `tests/fixtures/intelligence_app.jac`
+  and root-scoped `intelligence_test_app.jac`: offline native runtime fixtures.
+
+Modified core/domain.jac only to add authority `agent:run_intelligence` and
+`agent:read` capabilities. Added two protected RPCs in endpoints.jac, replaced the
+Incident Review/Agent Activity placeholders in frontend.jac, and enabled the native
+byLLM capability in jac.toml. Updated README and .env.example. Auth, organization
+operations, report persistence, GPS, categories and existing navigation are retained.
+The generated frontend/backend architecture is unchanged; no separate framework,
+service, client SDK or agent framework was introduced.
+
+Reports are loaded through existing authority-only report services. Jac scoring uses
+Haversine radius, absolute submission-time window, explicit compatible categories,
+location-text overlap and lexical description overlap. Candidate scores and all
+thresholds are deterministic/configurable. Complete-link greedy groups require every
+pair to meet those rules, preventing proximity-chain over-merging. Limits are the
+200 newest eligible reports, 10 groups/run and 8 reports/group. Groups remain
+disjoint; this bounded MVP does not enumerate all subsets or reassess a semantically
+rejected subset. Report nodes are never merged or modified.
+
+All candidate groups not already represented by an active proposal are compacted and
+sent together in one typed Jac `by llm` request. Compact input contains descriptions,
+categories, location text and Jac-computed pair distances, time differences,
+category relationships, lexical overlaps and scores; it contains no reporter IDs or
+report retrieval tool. Gemini is explicitly instructed to use those facts rather
+than calculate geography/time. A batch must return exactly one typed assessment for
+each exact unique candidate group ID. Jac validates every assessment and the complete
+group-ID set before writing any proposals, then revalidates current report snapshots.
+Negative `same_incident` assessments create no proposal. Report text is untrusted
+evidence. Missing model configuration, provider failure or malformed output produces
+a clean failed run; raw provider errors/private reasoning are not copied to audit.
+
+IncidentClusterProposal uses its stable Jac graph ID as proposal_id, sorted distinct
+report IDs, confidence, category/severity suggestions, public rationale, matching/
+conflicting signals, computed pair signals, pending_review status, timestamps,
+agent_run_id and revision=1. Canonical UUID5 graph identity plus existing-set checks
+prevent multiple records for exactly the same report set; overlapping, different
+sets remain proposals for future human review. Proposal writes revalidate snapshot
+fields/status/category/time/distance against currently authorized reports. No report
+ownership, content, status, timestamps or revision is changed.
+
+AgentRun records requester internally, request replay key, model/configuration,
+agent name, start/completion, status, report count, deterministic relationship count,
+candidate group count, batched LLM request count, proposal count, and sanitized
+error/summary. Public RunView omits requester and replay key. AgentDecision records run ID, decision type,
+report IDs, computed pair signals, nullable model confidence, concise public rationale
+and timestamp. Duplicates get an auditable skip without another model call. Empty
+and singleton datasets complete without a provider. Earlier successful proposals
+remain available if a later assessment fails.
+
+Analysis is synchronous and serialized within one server process. A durable request
+record is committed before external work so request replay returns its existing
+result rather than calling a provider again. Jac 0.37.23 can retry a read-only request
+when it first writes: the agent explicitly establishes the native Session writing
+tier before creating its run. This preflight closes the initial transaction, opens
+its read barrier and calls native ensure_writable_txn, letting any tier retry occur
+before the run or model call. Tests cover this path on fresh runtime fixtures.
+Runtime conflict/retry exceptions are rethrown rather than mistaken for model errors.
+Process termination can leave an interrupted running record; recovery is explicit
+with a new request. Distributed scheduling, worker/load guarantees and automatic
+crash reconciliation are deferred.
+
+Incident Review displays real latest-run statistics and persistent proposals,
+confidence as a suggestion, public reasoning, matching/conflicting evidence, source
+reports, coordinates, pairwise distances/time and map links. Task 4 actions are text
+only, not active controls. Agent Activity displays persisted runs and expandable
+decisions; additional agents/human approval events stay explicitly unimplemented.
+No model runs on page load, reporting, login or refresh. Citizen/org requests cannot
+run/read platform intelligence, even with forged navigation/capability state.
+
+### Original Task 3 tests and validation
+
+Original Task 3 tests cover Haversine identity/symmetry/known meters/dateline,
+candidate filtering, complete-link grouping, proposal persistence, replay behavior,
+unchanged reports, report reference validation, model failure, authority RBAC,
+production RPC isolation, configuration, missing provider configuration, empty and
+singleton datasets. No provider key or live model is needed.
+
+### Task 3 deterministic scoring and batched semantics follow-up
+
+Candidate relationships now require spatial/time bounds, same or explicitly related
+categories, text overlap, and a combined score threshold. Location and description
+overlap thresholds and the combined minimum score are server-configurable. The
+complete-link constraint remains in place. Model input is a compact list of all
+candidate groups with Jac-computed pair facts; no tools permit model-side report
+retrieval or distance/time calculations. One Gemini/byLLM request returns one
+`ClusterAssessment` per group. The complete response is validated for exact unique
+group IDs and all fields before any proposal creation. Synthetic 16-report coverage
+asserts four deterministic groups, one MockLLM batch invocation, four validated
+proposals, and unchanged source reports. Unit/integration coverage also checks
+category compatibility, category equality without textual evidence, negative and
+invalid AI output, and run observability. Live model setting remains the configured
+Gemini 3.8 Flash model; offline tests use MockLLM only.
+
+The test entry point is deliberately at project root because the installed runtime's
+prepared-module loader misresolved transitive imports from a nested entry. Production
+main.jac does not import it; production endpoint registry was inspected and contains
+only existing RPCs plus the two new protected intelligence RPCs.
+
+Actual Chrome automation used the same frontend and an isolated native JacTestClient
+graph, relaying HTTP calls without another persistent HTTP/dev server. It exercised
+authority-triggered offline MockLLM analysis; three nearby report references/maps and
+distant fourth-report exclusion; persisted proposal and real counters; expandable
+run/decision activity; duplicate proposal skip; reload/session recovery; Citizen
+navigation; mobile 390px no overflow; no JavaScript exceptions. Desktop/mobile
+screenshots were visually inspected. Temporary isolated users/reports/proposals were
+discarded. No fake production data, live authority changes or seeded proposals.
+
+Live provider connectivity, provider-specific output quality and the documented
+four-citizen live demonstration still require manual testing with server environment
+configuration. Physical-device GPS and deployment/load checks from earlier milestones
+also remain manual. No confirmed Incident, cluster approval/rejection/splitting,
+organization response, other runtime agents, cleanup, volunteer, notifications,
+analytics, mobile app or CLI was implemented.
+
+Final Task 3 validation on Jac 0.37.23:
+
+- `jac install`: exit 0; native byLLM hosted-provider dependencies installed.
+- `jac check`: exit 0, 1 passed; 498 compiler warnings remain, including existing
+  JSX/generated-setter and dynamic frontend typing warnings.
+- `jac check --nowarn`: exit 0, 1 passed.
+- `JAC_TEST_JOBS=0 jac test`: exit 0, **45 passed in 42.51s** (28 existing + 17 new),
+  with no paid/live model calls.
+- `git diff --check`: exit 0.
+- Existing `jac run` processes were preserved; no new persistent dev server was
+  launched. `jac run --show`: exit 0, existing full-stack app configuration;
+  App localhost:8000 returns HTTP 200; the new protected intelligence RPC on
+  localhost:8001 returns HTTP 401 for an anonymous probe.
+- Final Chrome fixture run: passed the offline browser scenarios above after the
+  final UI changes; updated screenshots visually inspected.
+- Source mix (owned tracked + new nonignored source, excluding generated runtime,
+  dependencies, docs/config): **35 Jac files / 2,360 lines; no Python/JS/TS/CSS source
+  files**. Styles remain embedded in the existing Jac theme. The project remains
+  comfortably above the 80% competition requirement and internal 90% Jac target.
+
+## Task 3 follow-up — optional synthetic dataset
+
+Added core/demo_dataset.jac and tests/demo_dataset.jac with its annex. Extended
+Report/ReportView with default `source_type="citizen"` and `demo_dataset=""`;
+normal submission signatures/ownership/auth remain unchanged and cannot assign these
+fields. Added authority `demo:manage`, three protected demo RPCs, opt-in controls in
+Incident Review, source-count/member-ID visibility on proposals, ReportCard Demo
+badges, and refresh callbacks so Incoming Reports reloads after maintenance. Updated
+.env.example and README. The test-only semantic fixture gained a generic offline
+MockLLM mode for arbitrary candidate groups. All added application/test logic is Jac.
+
+**Unchanged byte-for-byte during this follow-up:** agents/incident_intelligence.jac,
+agents/tools.jac, core/intelligence.jac. Their checksums were compared before/after.
+The production agent has no fixture membership, expected grouping or dataset-specific
+analysis logic. Seeding creates no proposals and never invokes a model.
+
+`ECOTRACK_ENABLE_DEMO_SEED=true` explicitly enables loading/clearing; unset/false
+blocks both operations in core and hides both buttons. Existing demo reports remain
+badged/visible if the flag is later disabled. Status and mutation RPCs still require
+Central Authority capabilities; anonymous/citizen/applicant requests are rejected.
+No credentials, synthetic accounts or independent authentication system are created.
+
+The fixed `incident-intelligence-demo-v1` manifest owns 16 authority-managed synthetic
+Report nodes under the authenticated authority graph, indexed by the normal private
+IncomingReport relationship. Uniform source_type=demo_seed/demo_dataset provenance
+identifies every fixture. The internal reporter reference is synthetic, not another
+person's account; these nodes do not appear in the authority's My Reports. A canonical
+manifest identity and existing-dataset lookup make loading idempotent, including
+across fixture-server reopen. Subsequent loads return “Demo dataset already loaded.”
+
+A flat Jac fixture generator contains four observations each for canal-side illegal
+dumping, blocked drain/local flooding, stream water pollution, and overflowing public
+bins. All landmarks/observations are fictional Sri Lankan-style examples. Descriptions
+vary naturally and share ordinary vocabulary. Distances within each intended group
+are approximately 20–90m and submission times within about 21 minutes; all 16 span
+105 minutes, with locations several kilometres apart between groups. Expected group
+memberships are asserted only in tests, not fields offered to the production agent.
+
+The normal analysis pipeline sees all submitted reports, synthetic and genuine.
+Four proposals are an evaluation expectation at default filters, never a production
+constant/result. Incoming Reports keeps all 16 original observations after proposals
+are generated. Incident Review shows actual dataset/report/proposal counts, every
+proposal's source count/IDs, confidence, suggested category/severity and public
+rationale/signals. Model/provider configuration is still required for live analysis.
+
+Cleanup builds and validates its whole deletion plan before deleting anything. It
+uses manifest IDs plus provenance and native ownership checks, removes demo-only
+proposals/decisions, and removes only safely attributable demo-only runs. Mixed or
+unattributable run history is preserved. If a proposal/decision includes genuine or
+unrelated reports, or another authority owns related records, the whole cleanup is
+refused without partial deletion. The same loading authority must clear the dataset;
+no native ACL was widened to permit deleting another authority's records. Repeated
+clear is harmless. Reload creates fresh report IDs so retained historical references
+cannot resolve to newly generated observations. Real reports are never deletion
+targets. Maintenance shares the existing process-local analysis lock and commits
+before releasing it. Multi-worker deployment guarantees remain outside this scope.
+
+Seven offline tests cover default-off gating and roles; exact 16/provenance/category/
+state and idempotency across persistence reopen; client provenance-spoof rejection;
+all within-group distances/candidate relationships and geographically excluded
+cross-group pairs (including when categories are made equal); normal agent + native
+MockLLM producing four proposals without report mutation; pure-demo cleanup and fresh
+reload IDs; genuine report/mixed-run preservation; refusal for mixed proposals; and
+cross-authority cleanup denial. No live provider is required by automated tests.
+
+Follow-up validation:
+
+- `jac check --nowarn`: exit 0, 1 passed (7.62s).
+- `JAC_TEST_JOBS=0 jac test`: exit 0, **52 passed in 59.17s** (45 existing + 7 new),
+  no paid/live LLM calls.
+- `git diff --check`: exit 0.
+- Fresh `jac build --as client -o /tmp/ecotrack-demo-client-build`: exit 0, client
+  bundle built successfully. The runtime writes client output under .jac/client/dist.
+  Existing dev-server incremental compiler retained stale ReportView interfaces
+  and kept restoring its cached error overlay. The fresh build passes; final
+  browser validation used this built bundle directly, with an explicit absence-of-
+  overlay assertion, without starting another server. Restart the existing dev
+  process when setting the demo flag to refresh its in-memory compiler state.
+- Actual Chrome checks of the freshly built client passed against isolated native
+  Jac graph/auth plus offline MockLLM: hidden default-off controls, explicit enable,
+  load/repeat-load, exactly 16
+  Incoming Demo badges, four normal-pipeline proposals with source IDs/counts, all
+  original reports retained afterward, disable/hide, clear refreshing both pages,
+  repeated load/clear, session recovery/persistence, mobile 390px no overflow, no
+  JavaScript exceptions. Desktop/mobile screenshots were visually inspected.
+  Temporary fixture data was discarded; no live database was seeded during work.
+- Agent/tools/clustering-core before/after checksums match. Existing development
+  servers were reused, with no additional persistent jac run process started.
+
+Manual follow-up: export the opt-in flag and existing authority root ID, configure
+provider model/key for live analysis, restart your existing server, login as the
+same authority for load/analyse/clear. README contains exact shell commands. Live
+provider quality remains untested by automation; approximately four proposals is
+an expectation, not a guaranteed result. Task 4 remains unimplemented.
+
+### ReportView client-bundle correction
+
+`contracts/report_views.jac` is now the single source declaration of the report
+view contract. Server services, RPC endpoints, intelligence tools and tests import
+it directly. Frontend components and the application import that same contract
+with `import type`; implementation annexes inherit the binding and retain typed
+report callbacks and lists. The persistent Report node remains in `core/reports.jac`.
+
+The earlier cache-only explanation above was incomplete: importing ReportView
+through endpoint re-exports and server-domain modules produced inconsistent client
+type identities. A regular runtime import of the extracted contract also collided
+with Jac's generated RPC hydration class (`Identifier "ReportView" has already
+been declared`). Direct type-only UI imports fix both boundaries without changing
+generated code, weakening types, or bypassing authorization. Demo provenance fields
+remain part of this shared contract; there is no component-local ReportView.
+
+Regression coverage checks the server/RPC/tool type identity and serialized contract
+path. The mixed genuine/demo cleanup fixture now names the same physical landmark,
+so it satisfies the current location/content candidate filter and continues testing
+refusal to delete mixed evidence. No clustering or cleanup safety rule was relaxed.
+
+Validation after this correction:
+
+- `jac check --nowarn`: exit 0, 1 passed in 8.23s.
+- Focused demo tests: exit 0, 7 passed in 33.04s.
+- `JAC_TEST_JOBS=0 jac test`: 58 passed in 70.24s, no live provider calls.
+- `jac build --as client`: exit 0, bundle built in 4.3s.
+- `git diff --check`: exit 0.
+- Existing `jac run` process reused; app, frontend and Intelligence page modules
+  return HTTP 200 with no client diagnostic marker. `jac run --show` exits 0.
+  Interactive browser flows and live-model analysis were not rerun for this fix.

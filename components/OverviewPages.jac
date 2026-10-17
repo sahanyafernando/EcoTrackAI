@@ -1,5 +1,6 @@
+import type from contracts.report_views { ReportView }
 import from .DateTime { DateTime }
-import from endpoints { AccountView, OrganizationView, ReportView }
+import from endpoints { AccountView, OrganizationView }
 import from .ReportCard { ReportCard }
 import from .OrganizationPage { OrganizationStatus }
 import from .Icon { Icon }

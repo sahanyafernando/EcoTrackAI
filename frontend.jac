@@ -1,6 +1,7 @@
 """One authenticated shell; role and pages come from the server account view."""
+import type from contracts.report_views { ReportView }
 import from "@jac/runtime" { SignupResult, jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
-import from endpoints { AccountView, OrganizationView, ReportView, account, apply, edit_organization, organizations, review, my_reports, all_reports }
+import from endpoints { AccountView, OrganizationView, account, apply, edit_organization, organizations, review, my_reports, all_reports }
 import from .navigation { workspace_context, resolve_page }
 import from .components.AppTheme { AppTheme }
 import from .components.AppShell { AppShell }
@@ -12,6 +13,7 @@ import from .components.AccountPages { ProfilePage, AuditPage }
 import from .components.ReportPanel { ReportPanel }
 import from .components.ReportListPage { ReportListPage }
 import from .components.PlannedPage { PlannedPage }
+import from .components.IntelligencePage { IntelligencePage }
 
 def:pub app -> JsxElement {
     has me: AccountView | None = None,
@@ -70,8 +72,8 @@ def:pub app -> JsxElement {
             {activePage == "cleanups" and <PlannedPage title="Cleanup Events" description={"This page will allow citizens to discover and join environmental cleanup events." if context == "citizen" else "Organizations will use this page to plan and manage environmental cleanup events."}/>}
             {activePage == "incidents" and context == "organization" and <PlannedPage title="Incident coordination" icon="incidents" description="Incident coordination is not implemented yet. Verified organizations will use this page to review confirmed incidents and coordinate lead/support responses."/>}
             {activePage == "volunteers" and context == "organization" and <PlannedPage title="Volunteers" icon="people" description="Organizations will use this page to coordinate volunteer participation and readiness for cleanup events."/>}
-            {activePage == "incident_review" and context == "authority" and <PlannedPage title="Incident Review" icon="incidents" description="The Incident Intelligence Agent will propose groups of related citizen reports here for authority confirmation."/>}
-            {activePage == "agents" and context == "authority" and <PlannedPage title="Agent Activity" icon="activity" description="Agent execution, reasoning summaries, tool activity and human approval events will appear here."/>}
+            {activePage == "incident_review" and context == "authority" and <IntelligencePage key={me.root_id + "review"} onDemoChanged={refresh}/>}
+            {activePage == "agents" and context == "authority" and <IntelligencePage key={me.root_id + "activity"} activity={True}/>}
         </AppShell>}
     </div>
 }

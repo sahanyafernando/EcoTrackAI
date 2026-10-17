@@ -1,5 +1,6 @@
 """Citizen observations, stored independently of any future Incident entity."""
 import from math { isfinite }
+import from contracts.report_views { ReportView }
 import from jaclang { JacRuntime as Jac }
 import from core.domain { now, is_authority, require_capability, ensure_profile }
 
@@ -21,7 +22,9 @@ node Report {
         created_at: str = "",
         updated_at: str = "",
         revision: int = 1,
-        submission_id: str = "";
+        submission_id: str = "",
+        source_type: str = "citizen",
+        demo_dataset: str = "";
 
     def __jac_access__ -> AccessLevel {
         if is_authority() { return AccessLevel.READ; }
@@ -37,27 +40,14 @@ edge IncomingReport: any --> Report {
     }
 }
 
-obj ReportView {
-    has id: str,
-        description: str,
-        category: str,
-        latitude: float,
-        longitude: float,
-        location_text: str,
-        evidence_ref: str,
-        submitted_at: str,
-        status: str,
-        created_at: str,
-        updated_at: str,
-        revision: int;
-}
 
 def report_view(item: Report) -> ReportView {
     # Do not serialize reporter identity, credentials, or internal request IDs.
     return ReportView(id=jid(item), description=item.description, category=item.category,
         latitude=item.latitude, longitude=item.longitude, location_text=item.location_text,
         evidence_ref=item.evidence_ref, submitted_at=item.submitted_at, status=item.status,
-        created_at=item.created_at, updated_at=item.updated_at, revision=item.revision);
+        created_at=item.created_at, updated_at=item.updated_at, revision=item.revision,
+        source_type=item.source_type, demo_dataset=item.demo_dataset);
 }
 
 def validate_report(description: str, category: str, latitude: float, longitude: float,

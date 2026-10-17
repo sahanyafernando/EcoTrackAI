@@ -33,3 +33,6 @@ watchdog = ">=3.0.0"
 # Disable the separate runtime admin portal and its default-account bootstrap.
 [scale.admin]
 enabled = false
+
+# Enables Jac-native byLLM hosted-provider dependencies; model chosen via server env.
+[byllm]

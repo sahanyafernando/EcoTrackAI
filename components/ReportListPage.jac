@@ -1,4 +1,5 @@
-import from endpoints { ReportView }
+import type from contracts.report_views { ReportView }
+
 import from .ReportCard { ReportCard }
 import from .Icon { Icon }
 
