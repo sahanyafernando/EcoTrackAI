@@ -1,42 +1,34 @@
-"""EcoTrackHackathon - Server-Side Data Layer.
-
-Messages are stored as `Message` nodes on the graph and persist across
-restarts. The walkers below are the API the client calls with `root spawn`.
-
-They are `:pub`, so they need no login: `root` is the shared global graph and
-every visitor reads and writes the same guestbook. Switch a walker to `:priv`
-to require authentication and give each user their own isolated `root`.
-
-The walkers report `Message` nodes directly. Typing `reports` as
-`list[Message]` makes `(spawn W).reports` a typed `list[Message]` on the client,
-so the UI gets `.author` / `.text` dot access instead of untyped dict keys.
-"""
-
-node Message {
-    has author: str,
-        text: str;
+"""Authenticated RPC boundary. All policy and mutations live in Jac core."""
+import from core.domain {
+    AccountView, OrganizationView, Organization, OrganizationIndex,
+    ensure_profile, own_organization, capabilities, org_view,
+    require_capability, apply_organization, edit_application, review_application
 }
 
-walker:pub PostMessage {
-    """Append a new message and report the created node."""
-    has author: str,
-        text: str,
-        reports: list[Message] = [];
-
-    can post with Root entry {
-        report here ++> Message(author=self.author, text=self.text);
-    }
+def:protect account(display_name: str = "") -> AccountView {
+    profile = ensure_profile(display_name);
+    org = own_organization();
+    return AccountView(display_name=profile.display_name,
+        account_status=profile.account_status, volunteer_enabled=profile.volunteer_enabled,
+        created_at=profile.created_at, updated_at=profile.updated_at, revision=profile.revision,
+        root_id=jid(root), capabilities=capabilities(),
+        organization=org_view(org) if org is not None else None);
 }
 
-walker:pub ListMessages {
-    """Report every message in the guestbook, one report per node."""
-    has reports: list[Message] = [];
+def:protect apply(name: str, description: str) -> OrganizationView {
+    return apply_organization(name, description);
+}
 
-    can collect with Root entry {
-        visit [-->];
-    }
+def:protect edit_organization(organization_id: str, name: str, description: str,
+                              expected_revision: int) -> OrganizationView {
+    return edit_application(organization_id, name, description, expected_revision);
+}
 
-    can gather with Message entry {
-        report here;
-    }
+def:protect organizations() -> list[OrganizationView] {
+    require_capability("audit:read");
+    return [org_view(org) for org in [root.shared ->:OrganizationIndex:->][?:Organization]];
+}
+
+def:protect review(organization_id: str, decision: str, expected_revision: int) -> OrganizationView {
+    return review_application(organization_id, decision, expected_revision);
 }

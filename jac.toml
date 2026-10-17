@@ -1,7 +1,7 @@
 [project]
 name = "EcoTrackHackathon"
 version = "0.1.0"
-description = "A full-stack Jac application"
+description = "EcoTrack AI identity and organization verification"
 entry-point = "main"
 kind = "web-app"
 jac-version = "==0.37.23"
@@ -28,3 +28,8 @@ typescript = "^5.3.3"
 watchdog = ">=3.0.0"
 
 [client]
+
+# EcoTrack authority is configured through server-side root IDs.
+# Disable the separate runtime admin portal and its default-account bootstrap.
+[scale.admin]
+enabled = false

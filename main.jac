@@ -1,14 +1,5 @@
-"""EcoTrackHackathon - Entry Point.
-
-Combines server-side endpoints with the client-side UI.
-"""
-
-import from endpoints { Message, PostMessage, ListMessages }
-
-# Client-side UI
-
+"""EcoTrack AI — authentication and organization verification milestone."""
+import from endpoints { account, apply, edit_organization, organizations, review }
 import from .frontend { app as ClientApp }
 
-def:pub app -> JsxElement {
-    <ClientApp/>
-}
+def:pub app -> JsxElement { <ClientApp/> }
