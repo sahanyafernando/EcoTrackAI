@@ -6,6 +6,7 @@ import from .DateTime { DateTime }
 import from .ReportCard { ReportCard }
 import from .Icon { Icon }
 import from .ResponseBoard { ResponseBoard }
+import from .CleanupPage { CleanupPage }
 
 def:pub RunSummary(item: RunView) -> JsxElement {
     <article>
@@ -130,6 +131,7 @@ def:pub IntelligencePage(activity: bool = False, onDemoChanged: Callable[[], Non
             </article> for item in incidents]}
         </section>}
         {not activity and <ResponseBoard key={str(len(incidents))}/>}
+        {not activity and <details className="panel"><summary>Inspect cleanup events</summary><CleanupPage/></details>}
         {state is not None and loadError == "" and activity and <section className="panel"><h2>Agent runs</h2>
             {[<div key={item.id}><RunSummary item={item}/><details><summary>Decision records</summary>
                 {[<article key={decision.id}><h4>{decision.decision_type.replace("_", " ")}</h4><p className="details">{decision.reasoning_summary}</p><p className="details">Reports: {", ".join(decision.report_ids)}</p>{decision.confidence is not None and <p>Model confidence: {round(decision.confidence * 100)}%</p>}

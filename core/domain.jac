@@ -130,13 +130,13 @@ def capabilities() -> list[str] {
     profile = ensure_profile();
     if profile.account_status != "active" { return []; }
     result = ["organization:apply", "organization:read_own", "organization:edit_pending",
-              "report:create", "report:read_own"];
+              "report:create", "report:read_own", "cleanup:read", "cleanup:join"];
     if is_authority() {
         result += ["organization:verify", "organization:suspend", "audit:read", "report:read_all", "agent:run_intelligence", "agent:read", "demo:manage", "incident:review_cluster", "incident:confirm", "incident:read", "response:read", "response:assign", "agent:coordinate_response"];
     }
     org = own_organization();
     if org is not None and org.verification_status == "verified" {
-        result += ["organization:verified_member", "response:read"];
+        result += ["organization:verified_member", "response:read", "cleanup:manage"];
     }
     return result;
 }

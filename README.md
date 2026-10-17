@@ -3,7 +3,8 @@
 Jac-powered environmental coordination. **Implemented: authentication, RBAC, organization verification,
 citizen environmental reports with GPS/manual coordinates, and a role-aware
 application shell, authority-triggered Incident Intelligence proposals, and human
-Incident confirmation/rejection and verified-organization response coordination (Tasks 1–5).**
+Incident confirmation/rejection, verified-organization response coordination,
+cleanup events and citizen participation (Tasks 1–6).**
 
 Requires **Jac 0.37.23**. From this directory:
 
@@ -72,7 +73,7 @@ jac run
 
 See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for test coverage,
 validation results, and remaining manual checks. Additional agents,
-cleanups, volunteering, notifications, analytics, mobile, and CLI are deferred.
+AI replanning, notifications, rewards, analytics, mobile, and CLI are deferred.
 
 ## Citizen reports and location (Task 2)
 
@@ -121,9 +122,9 @@ in any verification state selects the Organization workspace. Other accounts use
 the Citizen workspace. Navigation does not grant permissions; core RBAC is unchanged.
 
 - **Citizen:** Overview with real report counts/recent reports, Report Issue,
-  My Reports, Cleanup Events (planned), Profile.
+  My Reports, Cleanup Events, Profile.
 - **Organization:** Overview with actual application status, Organization details
-  and pending edits, Incidents (planned), Cleanup Events (planned), Volunteers (planned).
+  and pending edits, Incidents, Cleanup Events, Volunteers (advanced management planned).
 - **Central Authority:** Authority Overview with real counts, Incoming Reports,
   Organization Review, Incident Review, Agent Activity, Audit.
   Audit shows only each organization's latest available decision metadata; full
@@ -326,8 +327,8 @@ demo maintenance. Multi-worker load has not been certified.
 human audit decisions and confirmed Incident evidence. Use a fresh isolated demo
 database for another end-to-end rehearsal after confirmation.
 
-Split/merge/edit/reopen workflows, cleanup
-events and volunteers remain deferred. No new environment configuration is needed.
+Split/merge/edit/reopen workflows remain deferred. Cleanup events and participation
+are described in Task 6 below. No new environment configuration is needed.
 
 ## Response coordination (Task 5)
 
@@ -366,6 +367,46 @@ Incident ID, eligibility count, existing Lead check, proposed IDs, model/request
 metadata, status and public rationale. Original reports and organization verification
 remain unchanged. Lead/Support assignments persist across sessions and restarts.
 
-Withdrawal/reassignment, automatic replacement of a suspended Lead, service areas,
-cleanup events, volunteers and Task 6 are deferred. Suspension revokes organization
+Response withdrawal/reassignment, automatic replacement of a suspended Lead and
+service areas are deferred. Suspension revokes organization
 access immediately; historical assignments are retained and do not authorize members.
+
+## Cleanup events and participation (Task 6)
+
+Open **Organization → Cleanup Events** while logged in as the verified, active Lead
+for a confirmed Incident. Create an event with title, description, meeting location,
+latitude/longitude, future local date/time and required volunteer count (1–1000).
+The browser converts local date/time to timezone-qualified UTC for validation/storage.
+The Incident model has no representative coordinates, so location is entered manually;
+the application never guesses a meeting point. An OpenStreetMap link shows its position.
+
+The MVP allows **one official event per Incident**, including after completion or
+cancellation. Support/unverified organizations, Citizens and Authority cannot create
+or manage an event on behalf of the Lead. Current verified Lead membership is checked
+in core. Events begin `planned`; the Lead may start (`active`), complete or cancel
+them using revision-protected transitions. Terminal events cannot be reopened.
+
+**Citizen → Cleanup Events** lists persisted real events and required/joined/remaining
+counts. Any active authenticated citizen account may join a planned/active event,
+withdraw its own participation, or rejoin after withdrawal. No separate volunteer
+account or opt-in workflow is required. A canonical participation per account/event
+prevents duplicate counting. Withdrawn users are excluded; remaining need is
+`max(0, required - joined)`. Required volunteers is a target, not a hard joining cap.
+Closed events reject new joins; existing volunteers may still withdraw.
+
+Private VolunteerParticipation records contain the current user's identity and
+timestamps. A separate persisted identity-free attendance projection supplies counts,
+so other citizens/organizations receive counts without a roster of citizen IDs or
+contact information. Only the caller's own participation status is returned. Joined
+and withdrawn changes update the private record and projection atomically. Counts
+come from actual joined attendance records, not cached fake values.
+
+Organizations see counts and their own event controls. Support organizations can
+view but cannot manage the official event. Authority can expand **Inspect cleanup
+events** in Incident Review. Refresh reloads other users' participation changes;
+the caller's own actions update counts immediately. Data survives refresh/relogin.
+
+Task 7 can use `count_joined_volunteers`, `remaining_volunteers_needed` and
+`get_event_capacity_state` from `core/cleanups.jac`. No shortage AI/replanning,
+notifications, rewards, analytics, waitlists, recurring schedules, event field-edit
+workflow or private participant roster is implemented. No new environment settings.

@@ -676,3 +676,83 @@ replacement of a suspended Lead, detailed service-area/skill matching, cleanup
 events, volunteers and Task 6. Suspension removes organization access immediately;
 historical assignments remain reserved and do not grant member capabilities.
 Deployment-wide concurrent load has not been certified.
+
+## Task 6 — Cleanup Events and citizen participation
+
+Added native CleanupEvent and VolunteerParticipation models in `core/cleanups.jac`,
+canonical client contracts and a shared CleanupPage. Events store confirmed Incident
+and Lead organization IDs, display name/category, title/description, actual meeting
+location/coordinates, scheduled UTC time, required volunteers, status, timestamps
+and revision. Creation requires current verified membership in the active Lead
+organization. Support, unrelated, unverified and authority-only accounts cannot
+create/manage official events. One canonical official event per Incident is allowed,
+including after completion/cancellation; event replacement/reopening is deferred.
+
+Events begin planned, with Lead-only revision-checked transitions to active/cancelled,
+then completed/cancelled. Creation validates bounded text, finite/ranged coordinates,
+a future timezone-qualified time and an integer volunteer target of 1–1000. No
+Incident representative coordinates currently exist, so the form requests a meeting
+location rather than inventing defaults. Local browser time is converted to UTC.
+
+Authenticated active accounts join as Citizens; no separate volunteer identity or
+additional account opt-in is required. A canonical private participation per account/
+event records user ID, joined/withdrawn status and timestamps. An identity-free
+VolunteerAttendance projection is updated in the same transaction and supplies public
+counts without making private participation records readable by other users. The
+caller can only join/withdraw its own record; no caller-supplied user ID is accepted.
+Duplicate joins/withdrawals fail cleanly. Rejoining reuses the same records. Joined
+counts exclude withdrawn records; remaining is max(0, required minus joined). The
+target is not a hard enrollment limit. Closed events reject joins but permit withdrawal.
+Profile revisions and canonical IDs guard duplicate participant/event creation;
+the existing process lock serializes local create/manage/join/withdraw operations.
+
+Citizen and Organization Cleanup Events pages now show genuine persisted events,
+organization/category/location/time/status and required/joined/remaining counts, with
+Join/Withdraw. Current Leads get the creation form and Start/Complete/Cancel controls.
+Organizations receive counts without a private participant roster. Authority can
+inspect the same view from the collapsed cleanup section in Incident Review.
+Refresh reloads other users' changes; successful local actions reload server counts.
+UI draft text survives server validation errors. OpenStreetMap links reuse Task 2.
+
+Task 7 preparation is arithmetic only: `count_joined_volunteers`,
+`remaining_volunteers_needed`, and `get_event_capacity_state` are reusable guarded
+domain functions. No Task 7 agent, AI shortage detection, replanning, notifications,
+rewards, analytics, messaging, waitlists or recurring schedules were introduced.
+
+Six focused offline integration tests use the existing real auth/report/proposal/
+confirmation/verification/response workflow with native MockLLM only for prior-task
+setup. They cover Lead-only creation and persistence, duplicate official events,
+anonymous/Citizen/Support/unverified/suspended restrictions, three distinct Citizens,
+duplicate joins, own withdrawal/rejoin, forged user IDs, withdrawn counts, 8−3=5
+capacity, status revisions/transitions, closed-event joining, field validation,
+participant privacy and immediate management revocation after Lead suspension.
+No live provider is needed. All new implementation and test source is Jac.
+
+Validation:
+
+- `jac check --nowarn`: exit 0, 1 passed in 14.20s.
+- Isolated test application check: exit 0, 1 passed in 1.79s (imported interfaces
+  only; the full application check and tests provide the broader validation).
+- Focused Task 6 tests: exit 0, 6 passed in 35.18s.
+- `JAC_TEST_JOBS=0 jac test`: exit 0, 76 passed in 55.32s.
+- `jac build --as client`: exit 0, bundle built in 4.0s.
+- `git diff --check`: exit 0.
+- Reused existing `jac run` at App http://localhost:8003 / API :8002; app and
+  CleanupPage module return HTTP 200, anonymous join returns HTTP 401, and no
+  client diagnostic marker exists. `jac run --show` exits 0. No second server
+  was launched for this milestone.
+
+The first full run reported 75 passed and one preparation error because this status
+document was edited during compilation. Jac 0.37.23 inventories Markdown alongside
+source inputs. Holding the whole workspace unchanged resolved the preparation race;
+the complete rerun above passed. No checks were disabled or tests removed.
+
+Manual browser follow-up: as a verified active Lead, create an event with a future
+time and target eight. Login as three citizen accounts and join; refresh to see
+three joined/five remaining. Withdraw one and see two joined/six remaining; verify
+duplicate joining is unavailable. Inspect Lead status controls and Authority's
+cleanup section, refresh/relogin for persistence, and check a Support account has
+no creation/management controls. Browser click flows were not automated for Task 6.
+Private participant rosters, editing event fields, replacement events, complex
+scheduling, AI shortage detection/replanning, notifications, rewards and analytics
+remain deferred. Task 7 is not implemented.

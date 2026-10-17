@@ -90,3 +90,17 @@ def:protect accept_response(incident_id: str, organization_id: str, role: str,
                            expected_revision: int, run_id: str) -> ResponseView {
     return assign_response(incident_id, organization_id, role, expected_revision, run_id);
 }
+
+import from contracts.cleanup_views { CleanupBoardView, CleanupEventView, CapacityState }
+import from core.cleanups { cleanup_board, create_cleanup, change_cleanup_status, participate, get_event_capacity_state }
+def:protect cleanup_events() -> CleanupBoardView { return cleanup_board(); }
+def:protect create_cleanup_event(incident_id: str, title: str, description: str, location_text: str,
+    latitude: float, longitude: float, scheduled_at: str, required_volunteers: int) -> CleanupEventView {
+    return create_cleanup(incident_id, title, description, location_text, latitude, longitude, scheduled_at, required_volunteers);
+}
+def:protect manage_cleanup_event(event_id: str, status: str, expected_revision: int) -> CleanupEventView {
+    return change_cleanup_status(event_id, status, expected_revision);
+}
+def:protect join_cleanup(event_id: str) -> CleanupEventView { return participate(event_id, True); }
+def:protect withdraw_cleanup(event_id: str) -> CleanupEventView { return participate(event_id, False); }
+def:protect cleanup_capacity(event_id: str) -> CapacityState { return get_event_capacity_state(event_id); }
