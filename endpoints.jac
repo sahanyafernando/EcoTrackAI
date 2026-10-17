@@ -69,3 +69,12 @@ import from core.demo_dataset { DemoState, DemoResult, demo_state, load_demo_dat
 def:protect demo_dataset_status() -> DemoState { return demo_state(); }
 def:protect load_demo() -> DemoResult { return load_demo_dataset(); }
 def:protect clear_demo() -> DemoResult { return clear_demo_dataset(); }
+
+import from contracts.incident_views { IncidentView, HumanReviewView }
+import from core.incidents { list_confirmed_incidents, list_human_reviews, review_cluster_proposal }
+
+def:protect confirmed_incidents() -> list[IncidentView] { return list_confirmed_incidents(); }
+def:protect incident_human_reviews() -> list[HumanReviewView] { return list_human_reviews(); }
+def:protect review_cluster(proposal_id: str, decision: str, expected_revision: int) -> HumanReviewView {
+    return review_cluster_proposal(proposal_id, decision, expected_revision);
+}

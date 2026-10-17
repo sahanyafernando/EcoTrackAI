@@ -144,6 +144,9 @@ def clear_demo_dataset() -> DemoResult {
         proposals = [item for item in [root.shared ->:IntelligenceIndex:-> [?:IncidentClusterProposal]]
             if set(item.report_ids) & ids];
         for item in proposals {
+            if item.status != "pending_review" {
+                raise ValueError("A demo proposal has been reviewed. Cleanup was refused to preserve human decisions and incident evidence.");
+            }
             if not set(item.report_ids) <= ids {
                 raise ValueError("A proposal also references genuine or unrelated reports. Cleanup was refused to preserve that evidence.");
             }

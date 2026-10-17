@@ -548,3 +548,57 @@ Validation after this correction:
 - Existing `jac run` process reused; app, frontend and Intelligence page modules
   return HTTP 200 with no client diagnostic marker. `jac run --show` exits 0.
   Interactive browser flows and live-model analysis were not rerun for this fix.
+
+## Task 4 — Central Authority Incident confirmation
+
+Implemented a minimal persistent `Incident` and separate `HumanIncidentReview`
+audit node in `core/incidents.jac`, with client-safe views in
+`contracts/incident_views.jac`. Incidents contain category, severity, confirmed
+status, source report IDs/proposal ID, timestamps, confirming root and revision.
+Only authority capabilities permit reviewing proposals or listing this private data.
+`list_confirmed_incidents()` provides the domain entry point for later integration;
+organization access/response is not enabled yet.
+
+The only review transitions are `pending_review → confirmed/rejected`. Both require
+the current proposal revision and record reviewer/time/result/revision. Confirmation
+creates a canonical Incident identity derived from the proposal, increments its
+revision, and atomically commits Incident/proposal/human audit. Repeated/stale
+reviews fail. Missing/duplicate report references or invalid category/severity
+cannot be confirmed. No source Report is changed or deleted.
+
+Incident Review now offers Confirm Incident/Reject Proposal, reviewed status and
+metadata, and a persisted Confirmed Incidents section. Agent Activity displays human
+decisions separately from AgentDecision. Split is explicitly unimplemented. Existing
+type-only UI contract imports are retained. The model receives no confirmation tool;
+the shared process-local lock also blocks review from an active model assessor.
+Analysis skips already reviewed report sets instead of overwriting human decisions.
+Demo cleanup refuses any reviewed proposal to retain human audits and evidence.
+
+Six focused offline tests exercise real native auth/graph/proposal creation,
+cross-authority confirmation, exact source IDs and unchanged reports, duplicate and
+stale review protection, rejection/no reactivation, persistence across reopening,
+anonymous/Citizen/applicant/verified-organization denials, injected model confirmation
+denial and reviewed-demo preservation. No live provider calls are made.
+
+Validation:
+
+- `jac check --nowarn`: exit 0, 1 passed in 9.14s.
+- Focused Task 4 tests: exit 0, 6 passed in 19.43s.
+- `JAC_TEST_JOBS=0 jac test`: exit 0, 64 passed in 66.77s.
+- `git diff --check`: exit 0.
+- `jac build --as client`: exit 0, bundle built in 3.4s.
+- Restarted the existing development process with its environment preserved after
+  an incremental compiler error about server-only imports. Fresh `jac run` compiled
+  server/client artifacts and reached Server ready at App :8000 / API :8001.
+  No second development server was started.
+
+Earlier iterations caught a missing brace/unsupported transaction-interface method,
+then test collection imported peer test annexes and source edits raced preparation.
+These were corrected; the final isolated and full runs above passed.
+
+Manual browser follow-up: login as Authority, inspect existing proposals, confirm
+one and reject another, refresh/relogin, inspect Confirmed Incidents and human
+activity, and verify Incoming Reports/My Reports still show every source. Browser
+click flows and live-model quality were not automated for Task 4. No new environment
+variables are required. Split/merge/reopen/override, organization response, cleanups,
+volunteers and Task 5 remain deferred; multi-worker concurrency is not certified.

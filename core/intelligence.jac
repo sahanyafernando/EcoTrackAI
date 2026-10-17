@@ -192,9 +192,10 @@ node IncidentClusterProposal {
     has report_ids: list[str], confidence: float, suggested_category: str,
         suggested_severity: str, reasoning_summary: str, matching_signals: list[str],
         conflicting_signals: list[str], signals: list[PairSignal], agent_run_id: str,
-        status: str = "pending_review", created_at: str = "", updated_at: str = "", revision: int = 1;
+        status: str = "pending_review", created_at: str = "", updated_at: str = "", revision: int = 1,
+        reviewed_by: str = "", reviewed_at: str = "", incident_id: str = "";
     def __jac_access__ -> AccessLevel {
-        if is_authority() { return AccessLevel.READ; }
+        if is_authority() { return AccessLevel.WRITE; }
         return AccessLevel.NO_ACCESS;
     }
 }
@@ -229,7 +230,8 @@ obj ProposalView {
         confidence: float, suggested_category: str, suggested_severity: str,
         reasoning_summary: str, matching_signals: list[str], conflicting_signals: list[str],
         signals: list[PairSignal], status: str, created_at: str, updated_at: str,
-        agent_run_id: str, revision: int;
+        agent_run_id: str, revision: int,
+        reviewed_by: str = "", reviewed_at: str = "", incident_id: str = "";
 }
 obj DecisionView {
     has id: str, agent_run_id: str, decision_type: str, report_ids: list[str],
@@ -265,7 +267,8 @@ def intelligence_state() -> IntelligenceView {
         reasoning_summary=item.reasoning_summary, matching_signals=item.matching_signals,
         conflicting_signals=item.conflicting_signals, signals=item.signals, status=item.status,
         created_at=item.created_at, updated_at=item.updated_at, agent_run_id=item.agent_run_id,
-        revision=item.revision)
+        revision=item.revision, reviewed_by=item.reviewed_by, reviewed_at=item.reviewed_at,
+        incident_id=item.incident_id)
         for item in [root.shared ->:IntelligenceIndex:-> [?:IncidentClusterProposal, -created_at]]];
     runs = [run_view(item) for item in [root.shared ->:IntelligenceIndex:-> [?:AgentRun, -started_at]]];
     decisions = [DecisionView(id=jid(item), agent_run_id=item.agent_run_id,
@@ -362,7 +365,7 @@ def create_cluster_proposal(group: CandidateGroup, assessment: ClusterAssessment
     if not assessment.same_incident or assessment.confidence < config.confidence_threshold { return False; }
     ids = sorted([item.id for item in checked.reports]);
     for item in [root.shared ->:IntelligenceIndex:-> [?:IncidentClusterProposal]] {
-        if item.status == "pending_review" and item.report_ids == ids { return False; }
+        if item.report_ids == ids { return False; }
     }
     stamp = now();
     proposal = IncidentClusterProposal(report_ids=ids, confidence=assessment.confidence,

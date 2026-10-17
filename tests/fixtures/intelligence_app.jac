@@ -12,6 +12,10 @@ import from jaclang.byllm.lib { MockLLM }
 def:protect fixture_analysis(request_id: str, mode: str = "positive") -> RunView {
     def assessor(groups: list[CandidateGroup]) -> list[ClusterAssessment] {
         if mode == "failure" { raise RuntimeError("Provider error with secret that must not be recorded"); }
+        if mode == "attempt_confirmation" {
+            import from core.incidents { review_cluster_proposal }
+            review_cluster_proposal("model-supplied-id", "confirmed", 1);
+        }
         if mode in ["stale", "duplicate_ids", "missing"] {
             if mode == "stale" { groups[0].reports[0].revision += 1; }
             if mode == "duplicate_ids" { groups[0].reports.append(groups[0].reports[0]); }

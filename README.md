@@ -2,7 +2,8 @@
 
 Jac-powered environmental coordination. **Implemented: authentication, RBAC, organization verification,
 citizen environmental reports with GPS/manual coordinates, and a role-aware
-application shell, and authority-triggered Incident Intelligence cluster proposals (Tasks 1–3).**
+application shell, authority-triggered Incident Intelligence proposals, and human
+Incident confirmation/rejection (Tasks 1–4).**
 
 Requires **Jac 0.37.23**. From this directory:
 
@@ -70,7 +71,7 @@ jac run
 ```
 
 See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for test coverage,
-validation results, and remaining manual checks. Confirmed incidents, additional agents,
+validation results, and remaining manual checks. Organization response, additional agents,
 cleanups, volunteering, notifications, analytics, mobile, and CLI are deferred.
 
 ## Citizen reports and location (Task 2)
@@ -110,7 +111,7 @@ content validation, and authenticated image serving need a separate implementati
 `evidence_ref` is reserved and empty; arbitrary evidence URLs are not accepted.
 
 Related-report intelligence is implemented separately in Task 3 below.
-Organization response and confirmed Incident workflows remain deferred.
+Organization response remains deferred.
 
 ## Application pages (Task 2.5)
 
@@ -145,7 +146,8 @@ browser's locale/timezone. Use Refresh to reload server account/data changes.
 and agent audit records. Citizens and organization accounts retain their existing
 permissions. A model can suggest a report cluster, category and severity; it cannot
 change reports, verify organizations, promote users or create a confirmed Incident.
-Task 4 will add human review/accept/reject/split and confirmed Incident creation.
+Central Authority can confirm or reject proposals as described in Task 4 below.
+Splitting proposals remains deferred.
 
 Install the native byLLM capability's hosted-provider dependencies with `jac install`.
 Choose a supported provider in the **server environment**, for example:
@@ -298,4 +300,31 @@ already loaded reports or their Demo badges.
 
 This facility shares the existing per-process analysis lock, so local analysis and
 dataset maintenance cannot overlap. Multi-worker deployment remains outside the
-current validation scope. No Task 4 confirmation actions are included.
+current validation scope.
+
+## Authority Incident confirmation (Task 4)
+
+Open **Authority → Incident Review**, inspect the proposal's reports, deterministic
+evidence, confidence, category and severity, then choose **Confirm Incident** or
+**Reject Proposal**. Only a `pending_review` proposal can be reviewed, with its
+current revision. Confirmation creates exactly one persistent `confirmed` Incident
+containing the source report IDs, category/severity, confirmation time/reviewer,
+source proposal ID, timestamps and revision. Rejection creates no Incident.
+Source Reports remain unchanged and visible in Incoming Reports and My Reports.
+
+The page shows reviewed statuses and a **Confirmed Incidents** list. Agent Activity
+shows human review records separately from agent decisions. Server capabilities
+enforce review/confirmation; Citizen and Organization accounts cannot review or
+list this private authority data. Analysis cannot perform confirmation or recreate
+the same reviewed report set. Repeated/stale review requests fail without a second
+Incident. The native transaction commits the Incident, proposal and human review
+together; a canonical Incident ID and proposal revision protect duplicate writes.
+The existing process-local analysis lock also serializes review with analysis and
+demo maintenance. Multi-worker load has not been certified.
+
+**Demo cleanup refuses reviewed proposals**, including rejected proposals, to retain
+human audit decisions and confirmed Incident evidence. Use a fresh isolated demo
+database for another end-to-end rehearsal after confirmation.
+
+Split/merge/edit/reopen workflows, organization response coordination, cleanup
+events and volunteers remain deferred. No new environment configuration is needed.

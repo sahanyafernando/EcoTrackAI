@@ -132,7 +132,7 @@ def capabilities() -> list[str] {
     result = ["organization:apply", "organization:read_own", "organization:edit_pending",
               "report:create", "report:read_own"];
     if is_authority() {
-        result += ["organization:verify", "organization:suspend", "audit:read", "report:read_all", "agent:run_intelligence", "agent:read", "demo:manage"];
+        result += ["organization:verify", "organization:suspend", "audit:read", "report:read_all", "agent:run_intelligence", "agent:read", "demo:manage", "incident:review_cluster", "incident:confirm", "incident:read"];
     }
     org = own_organization();
     if org is not None and org.verification_status == "verified" {

@@ -88,11 +88,11 @@ def run_intelligence(request_id: str,
                 ids = sorted([observation.id for observation in group.reports]);
                 duplicate = False;
                 for proposal in [root.shared ->:IntelligenceIndex:-> [?:IncidentClusterProposal]] {
-                    if proposal.report_ids == ids and proposal.status == "pending_review" { duplicate = True; break; }
+                    if proposal.report_ids == ids { duplicate = True; break; }
                 }
                 if duplicate {
                     record_decision(run, group, "duplicate_proposal", None,
-                        "An active proposal already contains exactly these reports. This group was excluded from semantic review.");
+                        "A proposal already contains exactly these reports. Reviewed decisions are retained; this group was excluded from semantic review.");
                 } else {
                     pending_groups.append(group);
                 }
