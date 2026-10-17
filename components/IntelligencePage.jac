@@ -13,7 +13,12 @@ def:pub RunSummary(item: RunView) -> JsxElement {
         <div className="actions"><h3>{item.agent_name}</h3><span className={"badge " + ("rejected" if item.status == "failed" else ("pending" if item.status == "running" else "verified"))}>{item.status}</span></div>
         <p className="muted"><DateTime value={item.started_at}/> · {item.model}</p>
         {item.incident_id == "" and <div className="button-row"><span>Reports examined: <strong>{item.reports_examined}</strong></span><span>Candidate relationships: <strong>{item.candidate_relationships}</strong></span><span>Candidate groups: <strong>{item.candidate_groups_examined}</strong></span><span>LLM requests: <strong>{item.llm_requests}</strong></span><span>Proposals created: <strong>{item.proposals_created}</strong></span></div>}
-        {item.incident_id != "" and <div><p className="details">Incident: {item.incident_id}</p><p>Verified organizations considered: {item.organizations_considered} · LLM requests: {item.llm_requests}</p><p className="details">Existing Lead check: {item.existing_lead_id if item.existing_lead_id != "" else "No active lead"}</p></div>}
+        {item.incident_id != "" and item.cleanup_event_id == "" and <div><p className="details">Incident: {item.incident_id}</p><p>Verified organizations considered: {item.organizations_considered} · LLM requests: {item.llm_requests}</p><p className="details">Existing Lead check: {item.existing_lead_id if item.existing_lead_id != "" else "No active lead"}</p></div>}
+        {item.cleanup_event_id != "" and <div><p className="details">Cleanup event: {item.cleanup_event_id} · Incident: {item.incident_id}</p><p>LLM requests: {item.llm_requests}</p>
+            {item.cleanup_input is not None and <p>Required: {item.cleanup_input.required_volunteers} · Joined: {item.cleanup_input.joined_volunteers} · Missing: {item.cleanup_input.remaining_volunteers}</p>}
+            {item.cleanup_assessment is not None and <div><strong>Risk: {item.cleanup_assessment.risk_level.upper()}</strong><p>{item.cleanup_assessment.recommendation_type.replace("_", " ")}</p><ul>{[<li key={str(index)}>{action}</li> for (index, action) in enumerate(item.cleanup_assessment.recommended_actions)]}</ul></div>}
+            {item.error_category != "" and <p>Error category: {item.error_category}</p>}
+        </div>}
         <p>{item.summary}</p>
         {item.error_summary != "" and <p role="alert" className="notice error">{item.error_summary}</p>}
         <details><summary>Run details</summary><p className="details">Run {item.id}</p>{item.incident_id == "" and <div><p>Radius: {item.configuration.radius_meters} m · Time window: {item.configuration.time_window_hours} hours · Confidence threshold: {round(item.configuration.confidence_threshold * 100)}%</p><p>Limits: {item.configuration.max_reports} reports, {item.configuration.max_groups} groups, {item.configuration.max_group_size} reports per group.</p></div>}{item.completed_at != "" and <p>Completed <DateTime value={item.completed_at}/></p>}</details>
@@ -147,6 +152,6 @@ def:pub IntelligencePage(activity: bool = False, onDemoChanged: Callable[[], Non
                 {item.incident_id != "" and <p className="details">Incident: {item.incident_id}</p>}
             </article> for item in humanReviews]}
         </section>}
-        {activity and <section className="panel"><span className="badge planned">Not implemented yet</span><h3>Additional agents</h3><p className="muted">Coordinator, cleanup and volunteer agents are deferred.</p></section>}
+        {activity and <section className="panel"><span className="badge planned">Not implemented yet</span><h3>Coordinator Agent</h3><p className="muted">Platform orchestration is deferred to Task 8.</p></section>}
     </div>
 }

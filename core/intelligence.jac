@@ -1,5 +1,6 @@
 """Proposal-only intelligence domain: deterministic evidence and guarded persistence."""
 import from contracts.report_views { ReportView }
+import from contracts.cleanup_ai_views { CleanupPlanningContext, CleanupAssessment }
 import os;
 import from uuid { uuid5, NAMESPACE_URL }
 import from math { radians, sin, cos, asin, sqrt, isfinite }
@@ -205,7 +206,9 @@ node AgentRun {
         status: str = "running", reports_examined: int = 0, candidate_relationships: int = 0,
         candidate_groups_examined: int = 0, llm_requests: int = 0,
         proposals_created: int = 0, error_summary: str = "", summary: str = "",
-        incident_id: str = "", organizations_considered: int = 0, existing_lead_id: str = "";
+        incident_id: str = "", organizations_considered: int = 0, existing_lead_id: str = "",
+        cleanup_event_id: str = "", cleanup_input: CleanupPlanningContext | None = None,
+        cleanup_assessment: CleanupAssessment | None = None, error_category: str = "";
     def __jac_access__ -> AccessLevel {
         if is_authority() { return AccessLevel.READ; }
         return AccessLevel.NO_ACCESS;
@@ -213,7 +216,9 @@ node AgentRun {
 }
 node AgentDecision {
     has agent_run_id: str, decision_type: str, report_ids: list[str], signals: list[PairSignal],
-        confidence: float | None, reasoning_summary: str, timestamp: str;
+        confidence: float | None, reasoning_summary: str, timestamp: str,
+        cleanup_event_id: str = "", cleanup_input: CleanupPlanningContext | None = None,
+        cleanup_assessment: CleanupAssessment | None = None, error_category: str = "";
     def __jac_access__ -> AccessLevel {
         if is_authority() { return AccessLevel.READ; }
         return AccessLevel.NO_ACCESS;
@@ -236,7 +241,9 @@ obj ProposalView {
 }
 obj DecisionView {
     has id: str, agent_run_id: str, decision_type: str, report_ids: list[str],
-        signals: list[PairSignal], confidence: float | None, reasoning_summary: str, timestamp: str;
+        signals: list[PairSignal], confidence: float | None, reasoning_summary: str, timestamp: str,
+        cleanup_event_id: str = "", cleanup_input: CleanupPlanningContext | None = None,
+        cleanup_assessment: CleanupAssessment | None = None, error_category: str = "";
 }
 obj RunView {
     has id: str, agent_name: str, model: str, configuration: IntelligenceConfig,
@@ -244,7 +251,9 @@ obj RunView {
         reports_examined: int, candidate_relationships: int, candidate_groups_examined: int,
         llm_requests: int, proposals_created: int,
         error_summary: str, summary: str,
-        incident_id: str = "", organizations_considered: int = 0, existing_lead_id: str = "";
+        incident_id: str = "", organizations_considered: int = 0, existing_lead_id: str = "",
+        cleanup_event_id: str = "", cleanup_input: CleanupPlanningContext | None = None,
+        cleanup_assessment: CleanupAssessment | None = None, error_category: str = "";
 }
 obj IntelligenceView {
     has proposals: list[ProposalView], runs: list[RunView], decisions: list[DecisionView];
@@ -258,7 +267,9 @@ def run_view(item: AgentRun) -> RunView {
         candidate_groups_examined=item.candidate_groups_examined, llm_requests=item.llm_requests,
         proposals_created=item.proposals_created,
         error_summary=item.error_summary, summary=item.summary, incident_id=item.incident_id,
-        organizations_considered=item.organizations_considered, existing_lead_id=item.existing_lead_id);
+        organizations_considered=item.organizations_considered, existing_lead_id=item.existing_lead_id,
+        cleanup_event_id=item.cleanup_event_id, cleanup_input=item.cleanup_input,
+        cleanup_assessment=item.cleanup_assessment, error_category=item.error_category);
 }
 
 def intelligence_state() -> IntelligenceView {
@@ -276,7 +287,9 @@ def intelligence_state() -> IntelligenceView {
     runs = [run_view(item) for item in [root.shared ->:IntelligenceIndex:-> [?:AgentRun, -started_at]]];
     decisions = [DecisionView(id=jid(item), agent_run_id=item.agent_run_id,
         decision_type=item.decision_type, report_ids=item.report_ids, signals=item.signals,
-        confidence=item.confidence, reasoning_summary=item.reasoning_summary, timestamp=item.timestamp)
+        confidence=item.confidence, reasoning_summary=item.reasoning_summary, timestamp=item.timestamp,
+        cleanup_event_id=item.cleanup_event_id, cleanup_input=item.cleanup_input,
+        cleanup_assessment=item.cleanup_assessment, error_category=item.error_category)
         for item in [root.shared ->:IntelligenceIndex:-> [?:AgentDecision, -timestamp]]];
     return IntelligenceView(proposals=proposals, runs=runs, decisions=decisions);
 }

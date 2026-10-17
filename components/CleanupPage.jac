@@ -1,11 +1,26 @@
 """Shared cleanup events page; all ownership and participation checks run in core."""
 import type from contracts.cleanup_views { CleanupBoardView }
-import from endpoints { cleanup_events, create_cleanup_event, manage_cleanup_event, join_cleanup, withdraw_cleanup }
+import type from contracts.cleanup_ai_views { CleanupPlanningView }
+import from endpoints { cleanup_events, create_cleanup_event, manage_cleanup_event, join_cleanup, withdraw_cleanup, run_cleanup_ai, cleanup_ai_assessments }
 import from .DateTime { DateTime }
 import from .ReportCard { LocationLink }
 
+def:pub CleanupAssessmentPanel(item: CleanupPlanningView) -> JsxElement {
+    <article><h3>AI Volunteer Assessment</h3><p className="muted"><DateTime value={item.created_at}/> · {item.status}</p>
+        {item.stale and <p className="notice">Event or volunteer state has changed. Run Cleanup AI again for a current assessment.</p>}
+        {item.status == "failed" and <p className="notice error" role="alert">{item.error_summary} Category: {item.error_category}</p>}
+        {item.status == "completed" and item.assessment is not None and not item.stale and <div>
+            <p><strong>Risk: {item.assessment.risk_level.upper()}</strong> · {item.assessment.recommendation_type.replace("_", " ")}</p>
+            <p>Required: {item.input_state.required_volunteers} · Joined: {item.input_state.joined_volunteers} · Missing: {item.assessment.volunteers_missing}</p>
+            <p>{item.assessment.reasoning_summary}</p><ul>{[<li key={str(index)}>{action}</li> for (index, action) in enumerate(item.assessment.recommended_actions)]}</ul>
+            <p className="muted">Advisory recommendation. No assignments, dates or participation have been changed.</p>
+        </div>}
+    </article>
+}
+
 def:pub CleanupPage() -> JsxElement {
-    has board: CleanupBoardView | None = None, loading: bool = True, busy: bool = False,
+    has board: CleanupBoardView | None = None, plans: list[CleanupPlanningView] = [], planError: str = "",
+        planRequests: Ref[dict[str, str]] = Ref({}), loading: bool = True, busy: bool = False,
         error: str = "", feedback: str = "", incidentId: str = "", title: str = "",
         description: str = "", location: str = "", latitude: str = "", longitude: str = "",
         scheduledAt: str = "", required: str = "8", sending: Ref[bool] = Ref(False);
@@ -17,6 +32,8 @@ def:pub CleanupPage() -> JsxElement {
             if incidentId == "" and len(board.lead_incidents) > 0 { incidentId = board.lead_incidents[0].incident_id; }
         } except Exception { error = "Cleanup events could not be loaded. Refresh and check your session."; }
         finally { loading = False; }
+        try { plans = await cleanup_ai_assessments(); planError = ""; }
+        except Exception { planError = "AI assessment history could not be loaded. Counts remain available; refresh to retry."; }
     }
     async def create(e: FormEvent) -> None {
         e.preventDefault();
@@ -43,10 +60,23 @@ def:pub CleanupPage() -> JsxElement {
         } except Exception as failure { feedback = "Operation was not completed: " + str(failure); await load(); }
         finally { sending.current = False; busy = False; }
     }
+    async def plan(id: str) -> None {
+        if sending.current { return; }
+        sending.current = True; busy = True; feedback = "";
+        if id not in planRequests.current { planRequests.current[id] = str(globalThis.crypto.randomUUID()); }
+        try {
+            result = await run_cleanup_ai(event_id=id, request_id=planRequests.current[id]);
+            if result.status != "running" { del planRequests.current[id]; }
+            feedback = result.error_summary if result.status == "failed" else ("AI assessment recorded." if result.status == "completed" else "The previous run is still marked running. Ask Central Authority to inspect Agent Activity before retrying.");
+            await load();
+        } except Exception as failure { feedback = "Cleanup AI was not completed. Retry uses the same request ID. " + str(failure); }
+        finally { sending.current = False; busy = False; }
+    }
     <div>
         <section className="panel"><div className="actions"><div><p className="eyebrow">Community action</p><h2>Cleanup Events</h2><p>Join a real organization-led cleanup. Participation is linked to your current account.</p></div><button className="quiet" onClick={load} disabled={busy or loading}>Refresh events</button></div>
             {loading and <p role="status">Loading events…</p>}
             {error != "" and <p className="notice error" role="alert">{error}</p>}
+            {planError != "" and <p className="notice" role="status">{planError}</p>}
             {feedback != "" and <p className="notice" role="status" aria-live="polite">{feedback}</p>}
         </section>
         {board is not None and error == "" and len(board.lead_incidents) > 0 and <section className="panel"><h2>Create Cleanup Event</h2><p className="muted">Available only for Incidents where your verified organization is the active Lead. Enter the meeting location; no coordinates are assumed.</p>
@@ -78,7 +108,9 @@ def:pub CleanupPage() -> JsxElement {
                 {item.can_manage and item.status == "planned" and <button className="quiet" disabled={busy or loading} onClick={lambda { act(item.event_id, "active", item.revision); }}>Start event</button>}
                 {item.can_manage and item.status == "active" and <button className="quiet" disabled={busy or loading} onClick={lambda { act(item.event_id, "completed", item.revision); }}>Complete event</button>}
                 {item.can_manage and item.status in ["planned", "active"] and <button className="danger-outline" disabled={busy or loading} onClick={lambda { act(item.event_id, "cancelled", item.revision); }}>Cancel event</button>}
+                {item.can_manage and item.status in ["planned", "active"] and <button disabled={busy or loading} onClick={lambda { plan(item.event_id); }}>{"Request in progress…" if busy else "Run Cleanup AI"}</button>}
             </div><p className="details muted">Event {item.event_id} · Incident {item.incident_id}</p>
+            {[<CleanupAssessmentPanel key={assessment.run_id} item={assessment}/> for assessment in plans if assessment.event_id == item.event_id]}
         </section> for item in board.events]}
     </div>
 }

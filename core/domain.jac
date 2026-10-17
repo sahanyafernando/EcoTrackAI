@@ -136,7 +136,7 @@ def capabilities() -> list[str] {
     }
     org = own_organization();
     if org is not None and org.verification_status == "verified" {
-        result += ["organization:verified_member", "response:read", "cleanup:manage"];
+        result += ["organization:verified_member", "response:read", "cleanup:manage", "agent:plan_cleanup"];
     }
     return result;
 }

@@ -4,7 +4,7 @@ Jac-powered environmental coordination. **Implemented: authentication, RBAC, org
 citizen environmental reports with GPS/manual coordinates, and a role-aware
 application shell, authority-triggered Incident Intelligence proposals, and human
 Incident confirmation/rejection, verified-organization response coordination,
-cleanup events and citizen participation (Tasks 1–6).**
+cleanup events, citizen participation and AI cleanup planning (Tasks 1–7).**
 
 Requires **Jac 0.37.23**. From this directory:
 
@@ -73,7 +73,7 @@ jac run
 
 See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for test coverage,
 validation results, and remaining manual checks. Additional agents,
-AI replanning, notifications, rewards, analytics, mobile, and CLI are deferred.
+Coordinator orchestration, notifications, rewards, analytics, mobile, and CLI are deferred.
 
 ## Citizen reports and location (Task 2)
 
@@ -406,7 +406,56 @@ view but cannot manage the official event. Authority can expand **Inspect cleanu
 events** in Incident Review. Refresh reloads other users' participation changes;
 the caller's own actions update counts immediately. Data survives refresh/relogin.
 
-Task 7 can use `count_joined_volunteers`, `remaining_volunteers_needed` and
-`get_event_capacity_state` from `core/cleanups.jac`. No shortage AI/replanning,
-notifications, rewards, analytics, waitlists, recurring schedules, event field-edit
-workflow or private participant roster is implemented. No new environment settings.
+Task 7 uses `get_event_capacity_state` from `core/cleanups.jac`; counting and
+remaining-capacity functions are also available to the shared domain. Notifications,
+rewards, analytics, waitlists, recurring schedules, event field-edit workflows and
+private participant rosters are deferred. No new environment settings are needed.
+
+## Cleanup & Volunteer AI (Task 7)
+
+As the **current verified Lead**, open **Cleanup Events → Run Cleanup AI** on a
+planned/active event. The specialist reads persisted event/capacity/Incident/response
+state and makes one compact **Jac-native byLLM** request. It reuses the existing
+server configuration, for example:
+
+```bash
+export BYLLM_DEFAULT_MODEL='gemini/your-supported-model-id'
+export GOOGLE_API_KEY='your-provider-key'
+# Keep ECOTRACK_AUTHORITY_ROOT_IDS configured as before.
+jac run
+```
+
+Use the real `gemini/...` model ID already configured for Incident Intelligence;
+`GEMINI_API_KEY` is also supported by the installed runtime. Restart your existing
+server when changing its environment; do not launch another copy. No live model
+is needed for reporting, participation, deterministic counts or automated tests.
+
+Trusted inputs include required/joined/missing volunteers, event status/revision,
+scheduled/observed time, category/severity and actual assigned Lead/Support response
+records. No private volunteer identities are sent. The model returns typed risk,
+shortage flag, missing count, recommendation type, public rationale/actions and
+explicit assigned Support IDs. Jac validates allowed values, exact shortage/count
+agreement, bounded text/actions and assigned Support references. It rereads persisted
+state after inference and rejects stale or closed-event assessments. No model tool
+can assign organizations, confirm Incidents, alter verification, change a schedule
+or mutate participation. These are recommendations requiring human judgment.
+
+The latest real **AI Volunteer Assessment** shows risk, input counts and actions.
+If people join/withdraw afterward, Refresh marks it stale and hides the old advice
+until a new run. Run again to reason about current counts. Authority can inspect
+results from Incident Review and see full run/decision history in Agent Activity.
+Citizens, Support and unverified organizations cannot run this Lead-only action.
+Failed requests show a concise configuration/provider/timeout/quota/invalid-output/
+stale-state category while deterministic counts remain available; there is no fake
+AI fallback. Request IDs prevent transport retries from repeating the same run.
+
+Demo: create an eight-volunteer event, join with three citizens, then run AI as Lead.
+Confirm the input shows 8 required, 3 joined and 5 missing. Inspect the model's risk
+and proposed recovery actions. Withdraw one citizen and rerun: the fresh input must
+show 2 joined and 6 missing. Hosted model recommendations may vary; the counts cannot.
+Only concise public rationale is stored, never private internal reasoning or keys.
+Output retries are disabled; the application makes one byLLM invocation per valid
+run. Closing an event produces a failed invalid-state run without a model call.
+
+Task 8 Coordinator Agent, automatic execution of advice, event rescheduling/editing,
+notifications, rewards, analytics and messaging remain deferred.

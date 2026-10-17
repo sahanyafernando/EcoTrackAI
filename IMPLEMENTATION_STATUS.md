@@ -756,3 +756,78 @@ no creation/management controls. Browser click flows were not automated for Task
 Private participant rosters, editing event fields, replacement events, complex
 scheduling, AI shortage detection/replanning, notifications, rewards and analytics
 remain deferred. Task 7 is not implemented.
+
+## Task 7 — Cleanup & Volunteer AI specialist
+
+Added `agents/cleanup_volunteer.jac`, deterministic tools/validation in
+`core/cleanup_planning.jac`, and canonical client-safe planning contracts. Production
+uses the existing configured native byLLM Model, one compact typed invocation with
+no output retry or repeated tool loop. No deterministic recommendation substitutes
+for a missing/failed model. Only the current verified active Lead can trigger it.
+Authority-only, Citizen, Support, unverified and suspended accounts are denied.
+
+Input collection reads the actual event and Task 6 capacity, Incident category/
+severity, scheduled/observed time and actual active Lead/Support response records.
+Only aggregate volunteer counts are sent, never private participation identities.
+The typed output contains risk, shortage flag, missing count, recommendation type,
+bounded public rationale/actions and explicit Support organization references.
+Validation checks exact trusted count/shortage agreement, allowed enums, unique
+assigned Support IDs and current persisted state after inference. Lead-as-Support,
+unknown references, stale/closed events and invalid outputs are rejected. Model
+prose is advisory; structured IDs are the validated organization references.
+
+Existing AgentRun/AgentDecision nodes now store optional cleanup event/context/
+assessment/error-category fields, preserving existing task fields/defaults. Paid
+request keys are persisted before inference. Transport retries reuse the same run;
+new runs recollect current state. Fresh transaction reads after inference verify
+ownership, event state, capacity and assignments. The existing process lock prevents
+local operational mutation while assessment is in progress. No Incident, report,
+organization, response, event or participation is modified by the agent itself.
+Configuration/provider/timeout/quota/invalid-output/stale-state failures persist a
+failed audit with no fabricated assessment or raw provider/secret details.
+
+Cleanup Events shows Lead-only Run Cleanup AI and the latest real assessment.
+Counts stay independently visible on failure. Changed event/volunteer state marks
+old advice stale and hides it until rerun. Citizens/Support receive no planning
+history; Authority can inspect it and see cleanup risk/counts/actions/status in
+Agent Activity. Historical runs remain auditable. Existing one-admin-per-organization
+membership means Lead planning history is read from that account's owned runs;
+Authority reads the shared audit index. Multi-member history sharing is not added.
+
+Six new offline integration tests invoke native MockLLM through the same typed
+byLLM function used in production. They cover Lead access and role denials, trusted
+8/3/5 inputs, structured persistence/reopen, request replay, unchanged protected
+state, fresh joins/withdrawals, stale UI advice, invalid risk/type/count/shortage/
+Support references, provider/timeout/configuration failures, stale event detection,
+closed-event zero-call behavior and structured AgentRun/AgentDecision records.
+Test-only assessors and setup fixtures are excluded from production main. No live
+Gemini call is made by automated tests. All new implementation/test source is Jac.
+
+Validation before the full regression run: `jac check --nowarn` passed (exit 0,
+1 passed in 60.08s), the isolated fixture entry check passed (exit 0, 1 passed in
+2.98s), six focused tests passed (exit 0, 121.49s) and the client bundle compiled
+(exit 0, 11.8s). Documentation is updated before the full run to keep Jac's entire
+input inventory stable during preparation.
+
+Manual live demo: use the existing hosted model/key settings, create an eight-person
+event with three citizens joined, run Cleanup AI as Lead, inspect real model advice,
+withdraw one citizen and rerun for 8/2/6. Check Authority Agent Activity and that
+counts still display on a provider error. Browser click flows/live provider quality
+are not claimed as automated checks. Task 8 Coordinator, automatic execution,
+notifications, rewards, analytics, messaging and complex scheduling remain deferred.
+
+Final Task 7 validation:
+
+- `JAC_TEST_JOBS=0 jac test`: exit 0, **82 passed in 158.04s**, including all
+  Task 1–6 tests and six new Task 7 tests. No live provider calls.
+- `git diff --check`: exit 0.
+- Fresh `jac run --port 8003 --api-port 8002`: Server ready; App and cleanup/agent
+  client modules return HTTP 200; anonymous planning returns HTTP 401; no client
+  diagnostic marker remains. Existing processes were consolidated into one fresh
+  server with the active environment preserved, retaining the App URL.
+- The old incremental compiler had reported conflicting RunView identities after
+  the schema change, despite the clean check/build passing. Inspection found one
+  RunView declaration and consistent core imports. Restarting the compiler and
+  verifying the served modules cleared the stale diagnostic; no checks or types
+  were weakened and no generated code was manually patched.
+- Interactive browser clicks and live hosted-AI quality remain manual checks.

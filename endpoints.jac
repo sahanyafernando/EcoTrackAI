@@ -104,3 +104,9 @@ def:protect manage_cleanup_event(event_id: str, status: str, expected_revision: 
 def:protect join_cleanup(event_id: str) -> CleanupEventView { return participate(event_id, True); }
 def:protect withdraw_cleanup(event_id: str) -> CleanupEventView { return participate(event_id, False); }
 def:protect cleanup_capacity(event_id: str) -> CapacityState { return get_event_capacity_state(event_id); }
+
+import from contracts.cleanup_ai_views { CleanupPlanningView }
+import from core.cleanup_planning { latest_cleanup_plans }
+import from agents.cleanup_volunteer { run_cleanup_planning }
+def:protect run_cleanup_ai(event_id: str, request_id: str) -> RunView { return run_cleanup_planning(event_id, request_id); }
+def:protect cleanup_ai_assessments() -> list[CleanupPlanningView] { return latest_cleanup_plans(); }
