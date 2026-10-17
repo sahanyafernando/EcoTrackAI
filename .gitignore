@@ -1,0 +1,21 @@
+.jac/
+node_modules/
+.vscode/
+.idea/
+
+# Local planning files
+/docs/
+/templates/
+/MANIFEST.md
+
+# Windows download metadata
+*:Zone.Identifier
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs / temp
+*.log
+*.tmp
