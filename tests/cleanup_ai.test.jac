@@ -79,11 +79,18 @@ test "each new run rereads joining withdrawal and stale previous assessments" {
             client.set_auth_token(setup["citizen"]); rpc(client, "withdraw_cleanup", {"event_id": event});
             client.set_auth_token(setup["lead"]);
             third = plan(client, event); assert third["cleanup_assessment"]["volunteers_missing"] == 5;
+            client.set_auth_token(setup["second"]); rpc(client, "withdraw_cleanup", {"event_id": event});
+            client.set_auth_token(setup["lead"]);
+            fourth = plan(client, event);
+            assert fourth["cleanup_input"]["required_volunteers"] == 8;
+            assert fourth["cleanup_input"]["joined_volunteers"] == 2;
+            assert fourth["cleanup_input"]["remaining_volunteers"] == 6;
+            assert fourth["cleanup_assessment"]["volunteers_missing"] == 6;
             latest = rpc(client, "cleanup_ai_assessments");
-            assert len(latest) == 1 and latest[0]["run_id"] == third["id"] and not latest[0]["stale"];
+            assert len(latest) == 1 and latest[0]["run_id"] == fourth["id"] and not latest[0]["stale"];
             client.set_auth_token(setup["authority"]);
             runs = [item for item in rpc(client, "incident_intelligence_state")["runs"] if item["cleanup_event_id"] == event];
-            assert len(runs) == 3 and all([item["llm_requests"] == 1 for item in runs]);
+            assert len(runs) == 4 and all([item["llm_requests"] == 1 for item in runs]);
         } finally { client.close(); }
     }
 }
