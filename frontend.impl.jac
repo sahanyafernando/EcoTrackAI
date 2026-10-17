@@ -1,16 +1,36 @@
 impl app.load(display_name: str = "") -> None {
     current: AccountView | None = None;
     listed: list[OrganizationView] = [];
-    current = await account(display_name=display_name);
-    me = current;
-    if current.organization is not None {
-        orgName = current.organization.name;
-        description = current.organization.description;
-    }
-    if "audit:read" in current.capabilities {
-        listed = await organizations();
-    }
-    items = listed;
+    mine: list[ReportView] = [];
+    incoming: list[ReportView] = [];
+    dataLoading = True;
+    try {
+        current = await account(display_name=display_name);
+        me = current;
+        page = resolve_page(workspace_context(current.capabilities, current.organization is not None), page);
+        if current.organization is not None {
+            orgName = current.organization.name;
+            description = current.organization.description;
+        }
+        organizationError = "";
+        ownReportsError = "";
+        incomingError = "";
+        if "audit:read" in current.capabilities {
+            try { listed = await organizations(); }
+            except Exception { organizationError = "Organizations could not be loaded. Use Refresh to retry."; }
+        }
+        if "report:read_own" in current.capabilities {
+            try { mine = await my_reports(); }
+            except Exception { ownReportsError = "Your reports could not be loaded. Use Refresh to retry."; }
+        }
+        if "report:read_all" in current.capabilities {
+            try { incoming = await all_reports(); }
+            except Exception { incomingError = "Incoming reports could not be loaded. Use Refresh to retry."; }
+        }
+        items = listed;
+        ownReports = mine;
+        incomingReports = incoming;
+    } finally { dataLoading = False; }
 }
 
 impl app.recover -> None {
@@ -50,6 +70,9 @@ impl app.logout -> None {
     jacLogout();
     me = None;
     items = [];
+    ownReports = [];
+    incomingReports = [];
+    page = "overview";
     password = "";
     displayName = "";
     orgName = "";
@@ -93,4 +116,22 @@ impl app.refresh -> None {
     try { await load(); message = "Updated."; }
     except Exception { message = "Unable to refresh. Please try again."; }
     finally { busy = False; }
+}
+
+
+impl app.navigate(destination: str) -> None {
+    if me is None { return; }
+    page = resolve_page(workspace_context(me.capabilities, me.organization is not None), destination);
+    message = "";
+    globalThis.window.scrollTo({"top": 0, "behavior": "instant"});
+    globalThis.document.getElementById("page-content").focus();
+}
+
+impl app.reportSaved(item: ReportView) -> None {
+    ownReports = [item] + [previous for previous in ownReports if previous.id != item.id];
+    ownReportsError = "";
+    if me is not None and "report:read_all" in me.capabilities {
+        incomingReports = [item] + [previous for previous in incomingReports if previous.id != item.id];
+        incomingError = "";
+    }
 }

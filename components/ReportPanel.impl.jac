@@ -1,17 +1,11 @@
 impl ReportPanel.loadReports -> None {
     options: list[str] = [];
-    mine: list[ReportView] = [];
-    allItems: list[ReportView] = [];
     loading = True;
     try {
         options = await report_categories();
-        mine = await my_reports();
-        if authority { allItems = await all_reports(); }
         categories = options;
-        reports = mine;
-        incoming = allItems;
     } except Exception {
-        feedback = "Unable to load reports. Use Refresh reports to retry.";
+        feedback = "Unable to load categories. Retry loading the form.";
     } finally { loading = False; }
 }
 
@@ -90,8 +84,7 @@ impl ReportPanel.submit(e: FormEvent) -> None {
         saved = await create_report(description=description, category=category,
             latitude=Number(latitude), longitude=Number(longitude), location_text=locationText,
             submission_id=requestRef.current or "");
-        reports = [saved] + [item for item in reports if item.id != saved.id];
-        if authority { incoming = [saved] + [item for item in incoming if item.id != saved.id]; }
+        onSaved(saved);
         description = "";
         category = "";
         latitude = "";

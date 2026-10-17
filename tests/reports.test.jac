@@ -122,3 +122,23 @@ test "coordinate boundaries and all canonical categories are accepted" {
         validate_report("Observation", category, 0.0, 0.0, "", "boundary-request-key");
     }
 }
+
+test "client workspace state cannot grant authority capabilities" {
+    with tempfile.TemporaryDirectory() as directory {
+        client = JacTestClient.from_file("main.jac", base_path=directory);
+        try {
+            assert client.register_user("navigation_citizen", secrets.token_urlsafe(24)).ok;
+            before = rpc(client, "account");
+            response = client.post("/function/review", json={
+                "organization_id": "unknown", "decision": "verified", "expected_revision": 1,
+                "workspace": "authority", "page": "review", "capabilities": ["organization:verify"]
+            });
+            assert not response.ok;
+            assert not client.post("/function/all_reports", json={"workspace": "authority"}).ok;
+            after = rpc(client, "account");
+            assert "organization:verify" not in after["capabilities"];
+            assert "report:read_all" not in after["capabilities"];
+            assert before["capabilities"] == after["capabilities"];
+        } finally { client.close(); }
+    }
+}

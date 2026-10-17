@@ -1,7 +1,8 @@
 # EcoTrack AI
 
 Jac-powered environmental coordination. **Implemented: authentication, RBAC, organization verification,
-and citizen environmental reports with GPS/manual coordinates (Tasks 1–2).**
+citizen environmental reports with GPS/manual coordinates, and a role-aware
+application shell (Tasks 1–2.5).**
 
 Requires **Jac 0.37.23**. From this directory:
 
@@ -19,7 +20,8 @@ the runtime session on this browser; Jac 0.37.23 does not revoke issued JWTs.
 ## Initial Central Authority
 
 1. Start the app without an authority allowlist. Register the intended authority
-   account, login, and copy its **Account root** from the dashboard.
+   account, login, and open **Profile → Advanced account details** to copy its
+   **Account root**.
 2. Stop the server. Configure that exact root ID in the **server environment**:
 
    ```bash
@@ -73,7 +75,7 @@ cleanups, volunteering, notifications, analytics, mobile, and CLI are deferred.
 
 ## Citizen reports and location (Task 2)
 
-Use **Report an environmental issue** to describe one observation, choose a
+Open **Report Issue** to describe one environmental observation, choose a
 category, and supply coordinates. **Use my current location** asks the browser
 for location permission only when clicked. GPS needs HTTPS or localhost. Denial,
 unavailability, and timeout show retry instructions; manually entered coordinates
@@ -109,3 +111,30 @@ content validation, and authenticated image serving need a separate implementati
 
 Task 3 will address related-report/duplicate intelligence and incident review.
 No incident, cluster, LLM call, agent, or organization response flow is created here.
+
+## Application pages (Task 2.5)
+
+One shared shell selects navigation from the authenticated server account. Central
+Authority takes precedence over organization membership; an organization application
+in any verification state selects the Organization workspace. Other accounts use
+the Citizen workspace. Navigation does not grant permissions; core RBAC is unchanged.
+
+- **Citizen:** Overview with real report counts/recent reports, Report Issue,
+  My Reports, Cleanup Events (planned), Profile.
+- **Organization:** Overview with actual application status, Organization details
+  and pending edits, Incidents (planned), Cleanup Events (planned), Volunteers (planned).
+- **Central Authority:** Authority Overview with real counts, Incoming Reports,
+  Organization Review, Incident Review (planned), Agent Activity (planned), Audit.
+  Audit shows only each organization's latest available decision metadata; full
+  audit history is marked as not implemented yet.
+
+Profile is accessible through the sidebar account control in every workspace.
+It includes the organization application entry point and personal reporting tools,
+so organization/authority users can still submit and view their own citizen reports.
+Planned pages say **Not implemented yet** and contain no sample data or fake metrics.
+
+Desktop uses a fixed sidebar; mobile uses a navigation drawer. View state is managed
+in Jac without a new router/framework; reload recovers the session at Overview.
+The report form stays mounted while switching views to preserve the current draft
+and GPS confirmation; logout clears the authenticated view. Dates display in your
+browser's locale/timezone. Use Refresh to reload server account/data changes.

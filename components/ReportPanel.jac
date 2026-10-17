@@ -1,11 +1,9 @@
 """Jac-native report form and one-shot browser GPS capture."""
-import from endpoints { ReportView, report_categories, create_report, my_reports, all_reports }
-import from .ReportCard { ReportCard, LocationLink }
+import from endpoints { ReportView, report_categories, create_report }
+import from .ReportCard { LocationLink }
 
-def:pub ReportPanel(authority: bool) -> JsxElement {
+def:pub ReportPanel(onSaved: Callable[[ReportView], None]) -> JsxElement {
     has categories: list[str] = [],
-        reports: list[ReportView] = [],
-        incoming: list[ReportView] = [],
         description: str = "",
         category: str = "",
         latitude: str = "",
@@ -30,7 +28,7 @@ def:pub ReportPanel(authority: bool) -> JsxElement {
     def changeLocation -> None;
 
     <div>
-        <section aria-labelledby="report-form-title">
+        <section className="panel" aria-labelledby="report-form-title">
             <h2 id="report-form-title">Report an environmental issue</h2>
             <p>Describe one observation. Your report is visible to you and Central Authority.</p>
             <form onSubmit={submit}>
@@ -50,19 +48,8 @@ def:pub ReportPanel(authority: bool) -> JsxElement {
                 <label>Location description (optional)<input maxLength={500} disabled={saving} value={locationText} onChange={lambda (e: ChangeEvent) { locationText = e.target.value; }}/></label>
                 <button type="submit" disabled={saving or locating or not confirmed or loading}>{"Saving report…" if saving else "Submit report"}</button>
             </form>
-            <p role="status" aria-live="polite">{feedback}</p>
+            <p role="status" aria-live="polite" className="form-message">{feedback}</p>
+            {not loading and len(categories) == 0 and <button className="quiet" onClick={loadReports}>Retry loading categories</button>}
         </section>
-        <section aria-labelledby="my-reports-title">
-            <div className="actions"><h2 id="my-reports-title">My Reports</h2><button onClick={loadReports} disabled={loading or saving}>Refresh reports</button></div>
-            {loading and <p>Loading reports…</p>}
-            {not loading and len(reports) == 0 and <p>No reports submitted yet.</p>}
-            {[<ReportCard key={item.id} item={item}/> for item in reports]}
-        </section>
-        {authority and <section aria-labelledby="incoming-reports-title">
-            <h2 id="incoming-reports-title">Incoming Reports</h2>
-            <p>Raw citizen observations awaiting future incident review.</p>
-            {not loading and len(incoming) == 0 and <p>No incoming reports.</p>}
-            {[<ReportCard key={item.id} item={item}/> for item in incoming]}
-        </section>}
     </div>
 }

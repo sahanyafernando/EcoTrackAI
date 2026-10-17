@@ -1,4 +1,4 @@
-# Implementation status — Tasks 1 and 2
+# Implementation status — Tasks 1, 2 and 2.5
 
 Task 1: Auth + RBAC + organization verification. Application and tests are Jac;
 there is no second backend, credential system, or frontend stack.
@@ -184,3 +184,88 @@ open an OpenStreetMap marker, and review Incoming Reports as your configured aut
 Production deployment and multi-worker load remain unverified. No incidents,
 deduplication/clustering, LLMs/agents, organization incident queue, cleanups, volunteers,
 notifications, analytics, route planning, native mobile, or CLI were implemented.
+
+
+## Task 2.5 — Role-based application shell
+
+One reusable AppShell provides persistent desktop sidebar navigation, active-page
+indication, account/profile controls, logout, refresh, breadcrumbs, skip-to-content,
+and an accessible toggle/dismissible mobile drawer. The environmental visual system
+is shared by all pages and the redesigned login/register screen. AppTheme embeds CSS
+in Jac, following the existing scaffold's working style approach; Icon uses small
+inline SVGs. No new dependencies, framework, backend, or runtime configuration.
+
+Created navigation.jac (pure presentation policy), components/AppShell.jac,
+AppTheme.jac, AuthPage.jac, Icon.jac, DateTime.jac, OverviewPages.jac,
+OrganizationPage.jac, AccountPages.jac, ReportListPage.jac, PlannedPage.jac,
+and tests/navigation_policy.jac with its annex. Modified frontend.jac and its
+implementation, ReportPanel and its implementation (form only), ReportCard (date
+formatting), tests/reports.test.jac (UI-state spoofing rejection), and these docs.
+Core domain modules, endpoints, persistence schemas, auth helpers and authority
+bootstrap configuration are unchanged.
+
+Navigation derives from the server AccountView: organization:verify selects
+Authority; otherwise an organization relationship selects Organization regardless
+of pending/verified/rejected/suspended status; otherwise Citizen. resolve_page
+falls back to Overview for unavailable authority pages. Pure presentation helpers
+never mutate capability lists and cannot authorize a backend action.
+
+Citizen: Overview with real report/submitted counts and recent observations;
+Report Issue; My Reports; Cleanup Events placeholder; Profile. Organization:
+Overview with actual organization/status/admin membership, Organization application
+and pending edits, Incidents/Cleanup Events/Volunteers placeholders. Authority:
+Overview with actual pending/incoming/verified counts, Incoming Reports,
+Organization Review with verify/reject/suspend, Incident Review/Agent Activity
+placeholders, Audit with latest decision per organization. This is current metadata,
+not the full appended review log; full audit history is explicitly planned.
+
+Profile is available from account controls in all workspaces. It exposes account
+information and an advanced disclosure for the bootstrap root ID, plus organization
+application and personal reporting actions. Official organization status is exactly
+verified; rejection/suspension never render as verified. Unimplemented features
+say "Not implemented yet"; no incident, agent, volunteer or cleanup statistics
+were fabricated. Counts show loading/unavailable states on fetch failure.
+
+The shell owns server-derived lists and view state, and passes typed callbacks to
+page components. The existing GPS/report form remains mounted but hidden outside
+Report Issue, retaining drafts/confirmation while navigating. Report categories,
+validation, browser GPS, manual fallback, map links, submission retry keys and secure
+Jac authentication are preserved. No separate frontend architecture was introduced.
+Reload returns to Overview after recovering the session. Navigation state is not a
+URL router; browser Back/Forward does not traverse views.
+
+### Task 2.5 validation
+
+- `jac check`: exit 0; compiler warnings remain (primarily generated setters/JSX and
+  browser interop typing warnings).
+- `jac check --nowarn`: exit 0.
+- `jac check tests --nowarn`: exit 0.
+- `JAC_TEST_JOBS=0 jac test`: exit 0, 28 passed (23 existing + 5 new).
+- `git diff --check`: exit 0.
+- Existing Jac development servers were reused; no additional persistent dev
+  server was started. App at localhost:8000 / API localhost:8001 remained healthy.
+  `jac run --show` verifies the existing application configuration.
+
+New tests cover Citizen navigation, Organization relationship navigation, Authority
+precedence/navigation, unavailable-page fallback without capability mutation, and
+rejection of authority/capability fields supplied through client request state.
+
+Actual Chrome checks: registration/login/logout/session recovery; Citizen pages
+and counts; draft retention between Report Issue/My Reports; GPS denial and emulated
+success; submission, map URL and persisted reports; organization application and
+pending workspace; Profile personal tools; mobile drawer and no overflow at 390px.
+Desktop/mobile screenshots were visually inspected.
+
+Authority browser checks used the same compiled frontend with HTTP calls relayed to
+an isolated native JacTestClient fixture (no second HTTP/dev server). They exercised
+real Jac auth/core/graph operations: Authority navigation and real fixture counts,
+Incoming Reports, verify/reject/suspend, Audit metadata, planned pages, and the
+Organization verified/rejected/suspended views. No authority powers were granted to
+live users for testing. Temporary live browser accounts/applications/reports were
+removed; isolated fixture data was discarded.
+
+Manual follow-up: review the layout in your preferred browsers/devices and try
+physical GPS over HTTPS (automated GPS used emulation). Production deployment,
+multi-worker load and exhaustive assistive-technology testing remain unverified.
+Task 3 AI/incident intelligence, clustering, agents, cleanups, volunteers, and
+notifications remain deferred. No Task 3 domain behavior was added.
