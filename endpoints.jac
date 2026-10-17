@@ -32,3 +32,24 @@ def:protect organizations() -> list[OrganizationView] {
 def:protect review(organization_id: str, decision: str, expected_revision: int) -> OrganizationView {
     return review_application(organization_id, decision, expected_revision);
 }
+
+
+import from core.reports {
+    ReportView, REPORT_CATEGORIES, submit_report, own_reports, incoming_reports, inspect_report
+}
+
+def:protect report_categories() -> list[str] {
+    require_capability("report:create");
+    return list(REPORT_CATEGORIES);
+}
+
+def:protect create_report(description: str, category: str, latitude: float, longitude: float,
+                          submission_id: str, location_text: str = "") -> ReportView {
+    return submit_report(description, category, latitude, longitude, location_text, submission_id);
+}
+
+def:protect my_reports() -> list[ReportView] { return own_reports(); }
+
+def:protect all_reports() -> list[ReportView] { return incoming_reports(); }
+
+def:protect get_report(report_id: str) -> ReportView { return inspect_report(report_id); }

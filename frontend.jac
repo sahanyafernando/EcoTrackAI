@@ -1,5 +1,6 @@
 """Minimal EcoTrack shell using the Jac runtime's managed auth session."""
 import from "@jac/runtime" { SignupResult, jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
+import from .components.ReportPanel { ReportPanel }
 import from endpoints { AccountView, OrganizationView, account, apply, edit_organization, organizations, review }
 
 def:pub app -> JsxElement {
@@ -32,8 +33,8 @@ body { margin: 0; background: #f3f7f4; }
             section, article { background: white; border: 1px solid #d6e5dd; border-radius: 12px; padding: 20px; margin: 18px 0; }
             form { display: grid; gap: 12px; max-width: 560px; }
             label { display: grid; gap: 5px; font-weight: 600; }
-            input, textarea, button { font: inherit; padding: 10px 12px; border: 1px solid #aac5b8; border-radius: 6px; box-sizing: border-box; }
-            input, textarea { width: 100%; min-width: 0; }
+            input, textarea, select, button { font: inherit; padding: 10px 12px; border: 1px solid #aac5b8; border-radius: 6px; box-sizing: border-box; }
+            input, textarea, select { width: 100%; min-width: 0; }
             textarea { min-height: 110px; resize: vertical; }
             button { cursor: pointer; background: #1d654c; color: white; }
             button:disabled { opacity: .6; cursor: wait; }
@@ -65,6 +66,7 @@ body { margin: 0; background: #f3f7f4; }
                 <p>{"Central Authority" if "organization:verify" in me.capabilities else ("Organization admin" if me.organization is not None else "Citizen")}</p>
                 <p className="muted">Account root: <code>{me.root_id}</code></p>
             </section>
+            {"report:create" in me.capabilities and <ReportPanel key={me.root_id + str("report:read_all" in me.capabilities)} authority={"report:read_all" in me.capabilities}/>}
             <section>
                 <h2>Organization</h2>
                 {me.organization is not None and <div>

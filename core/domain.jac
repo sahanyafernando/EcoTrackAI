@@ -129,9 +129,10 @@ def own_organization() -> Organization | None {
 def capabilities() -> list[str] {
     profile = ensure_profile();
     if profile.account_status != "active" { return []; }
-    result = ["organization:apply", "organization:read_own", "organization:edit_pending"];
+    result = ["organization:apply", "organization:read_own", "organization:edit_pending",
+              "report:create", "report:read_own"];
     if is_authority() {
-        result += ["organization:verify", "organization:suspend", "audit:read"];
+        result += ["organization:verify", "organization:suspend", "audit:read", "report:read_all"];
     }
     org = own_organization();
     if org is not None and org.verification_status == "verified" {

@@ -1,7 +1,7 @@
 # EcoTrack AI
 
-Jac-powered environmental coordination. **Task 1 implements authentication, RBAC,
-organization applications, and Central Authority verification only.**
+Jac-powered environmental coordination. **Implemented: authentication, RBAC, organization verification,
+and citizen environmental reports with GPS/manual coordinates (Tasks 1–2).**
 
 Requires **Jac 0.37.23**. From this directory:
 
@@ -68,5 +68,44 @@ jac run
 ```
 
 See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for test coverage,
-validation results, and remaining manual checks. Reports, incidents, agents,
-cleanups, volunteering, maps, notifications, analytics, mobile, and CLI are deferred.
+validation results, and remaining manual checks. Incident processing, agents,
+cleanups, volunteering, notifications, analytics, mobile, and CLI are deferred.
+
+## Citizen reports and location (Task 2)
+
+Use **Report an environmental issue** to describe one observation, choose a
+category, and supply coordinates. **Use my current location** asks the browser
+for location permission only when clicked. GPS needs HTTPS or localhost. Denial,
+unavailability, and timeout show retry instructions; manually entered coordinates
+work without GPS or a geocoding API. Latitude must be -90…90 and longitude
+-180…180. Review and **Confirm location** before submitting; use **Change location**
+to replace a confirmed position.
+
+The core owns the fixed categories: `illegal_dumping`, `overflowing_waste`,
+`water_pollution`, `blocked_drain`, `damaged_public_space`, `other`. The form loads
+them from the server. Description is required (1–5000 trimmed characters); location
+text is optional (up to 500). Both finite coordinates are required, including when
+GPS fails. A location description alone is insufficient in this milestone.
+
+A persisted Report holds a stable Jac ID, reporter root reference, description,
+category, coordinates, optional location text, reserved evidence reference,
+submitted/created/updated timestamps, `submitted` status, and revision 1. Reports
+are immutable through the API in Task 2. A draft request ID prevents duplicate saves
+when the same submission is retried; separate observations remain separate reports.
+
+**My Reports** lists your saved observations after refresh/logout/login. Citizen
+accounts, including organization applicants/members, retain access to their own
+reports. Only configured Central Authority receives `report:read_all` and the
+**Incoming Reports** view. An organization’s verification never grants access to
+other citizens’ raw reports. Client views omit reporter identity and private profile
+data. Reporting endpoints are authenticated and enforce capabilities in core.
+
+**View position on OpenStreetMap** opens a marker at the report coordinates in a
+new tab. There is no embedded tracker, map library, API key, reverse geocoder, or
+routing. Coordinates are sent to OpenStreetMap only when the link is opened.
+Image upload is deferred: Jac supports multipart upload, but private storage,
+content validation, and authenticated image serving need a separate implementation.
+`evidence_ref` is reserved and empty; arbitrary evidence URLs are not accepted.
+
+Task 3 will address related-report/duplicate intelligence and incident review.
+No incident, cluster, LLM call, agent, or organization response flow is created here.

@@ -116,6 +116,13 @@ test "core domain also rejects anonymous or system root" {
             with testraises(PermissionError) { ensure_profile(); }
             with testraises(PermissionError) { apply_organization("Denied", "No authenticated user"); }
             with testraises(PermissionError) { review_application("unknown", "verified", 1); }
-        } finally { client.close(); }
+        } finally {
+            client.close();
+            # This direct-core test resolves the guest outside HTTP middleware. Jac 0.37.23
+            # caches that root in this context; release it before the next isolated database.
+            import from jaclang.server.identity.user_manager { _root_id_request_cache }
+            _root_id_request_cache.set(None);
+            Jac.set_shared_root_resolver(None);
+        }
     }
 }
