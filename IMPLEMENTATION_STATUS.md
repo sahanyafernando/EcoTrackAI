@@ -831,3 +831,37 @@ Final Task 7 validation:
   verifying the served modules cleared the stale diagnostic; no checks or types
   were weakened and no generated code was manually patched.
 - Interactive browser clicks and live hosted-AI quality remain manual checks.
+
+## Task 8 — bounded Multi-Agent Coordinator
+
+Implemented Authority-controlled orchestration for `incident_confirmed`,
+`cleanup_created` and `volunteer_state_changed`. New canonical Coordinator contracts
+and deterministic domain policy supply trusted current Incident/cleanup context.
+One native byLLM routing decision is checked against an action/target allowlist,
+exact entity ID and a fresh state signature, then invokes at most one existing
+specialist. Response Coordination remains advisory and cannot create another Lead;
+cleanup delegation explicitly requires Authority plus an active verified event Lead.
+The direct Lead-only Cleanup AI endpoint is unchanged. No protected operational
+state is mutated by Coordinator.
+
+AgentRun stores context, structured choice, linked specialist run/result, timestamps,
+request ID, own LLM request count and safe error category. AgentDecision links the
+public orchestration rationale. Transport replay returns the existing run. Provider,
+configuration, validation/stale-state and delegation failures record failed runs
+without fabricated assessments. No hidden reasoning is persisted.
+
+Authority Incident Review has Run Coordinator on confirmed Incident response cards.
+Its cleanup inspection has Run Coordinator (cleanup_created) and Replan with
+Coordinator (volunteer_state_changed). Agent Activity renders actual orchestration
+inputs/decision/result and linked specialist ID alongside specialist results.
+Scoped cleanup-run read access lets the current verified Lead inspect assessments
+produced by Authority handoffs; unrelated Citizens/Support receive no planning history.
+
+Five focused offline integration tests passed initially (33.16s), using native
+MockLLM for Coordinator and specialist calls. Coverage includes both real handoffs,
+8/3/5 then withdrawal to 8/2/6, role denials, invalid target/action/entity, existing
+Lead protection, unchanged Reports, provider/timeout and specialist failures,
+idempotent replay and durable run/decision audit. Final validation is reported in
+the delivery response. No live provider or interactive browser success is claimed.
+Automatic event execution, notifications, rewards, analytics, messaging, complex
+scheduling and additional orchestration depth remain deferred.

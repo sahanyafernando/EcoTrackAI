@@ -1,6 +1,7 @@
 """Proposal-only intelligence domain: deterministic evidence and guarded persistence."""
 import from contracts.report_views { ReportView }
 import from contracts.cleanup_ai_views { CleanupPlanningContext, CleanupAssessment }
+import from contracts.coordinator_views { CoordinatorContext, CoordinatorDecision }
 import os;
 import from uuid { uuid5, NAMESPACE_URL }
 import from math { radians, sin, cos, asin, sqrt, isfinite }
@@ -208,9 +209,15 @@ node AgentRun {
         proposals_created: int = 0, error_summary: str = "", summary: str = "",
         incident_id: str = "", organizations_considered: int = 0, existing_lead_id: str = "",
         cleanup_event_id: str = "", cleanup_input: CleanupPlanningContext | None = None,
-        cleanup_assessment: CleanupAssessment | None = None, error_category: str = "";
+        cleanup_assessment: CleanupAssessment | None = None, error_category: str = "",
+        coordinator_input: CoordinatorContext | None = None, coordinator_decision: CoordinatorDecision | None = None,
+        delegated_run_id: str = "", delegation_result: str = "";
     def __jac_access__ -> AccessLevel {
         if is_authority() { return AccessLevel.READ; }
+        if self.cleanup_input is not None {
+            import from core.cleanups { manages_incident }
+            if manages_incident(self.incident_id, self.cleanup_input.lead_organization_id) { return AccessLevel.READ; }
+        }
         return AccessLevel.NO_ACCESS;
     }
 }
@@ -227,6 +234,11 @@ node AgentDecision {
 edge IntelligenceIndex: any --> any {
     def __jac_access__ -> AccessLevel {
         if is_authority() { return AccessLevel.READ; }
+        import from core.domain { capabilities, require_authenticated }
+        try {
+            require_authenticated();
+            if "cleanup:manage" in capabilities() { return AccessLevel.READ; }
+        } except PermissionError { return AccessLevel.NO_ACCESS; }
         return AccessLevel.NO_ACCESS;
     }
 }
@@ -253,7 +265,9 @@ obj RunView {
         error_summary: str, summary: str,
         incident_id: str = "", organizations_considered: int = 0, existing_lead_id: str = "",
         cleanup_event_id: str = "", cleanup_input: CleanupPlanningContext | None = None,
-        cleanup_assessment: CleanupAssessment | None = None, error_category: str = "";
+        cleanup_assessment: CleanupAssessment | None = None, error_category: str = "",
+        coordinator_input: CoordinatorContext | None = None, coordinator_decision: CoordinatorDecision | None = None,
+        delegated_run_id: str = "", delegation_result: str = "";
 }
 obj IntelligenceView {
     has proposals: list[ProposalView], runs: list[RunView], decisions: list[DecisionView];
@@ -269,7 +283,9 @@ def run_view(item: AgentRun) -> RunView {
         error_summary=item.error_summary, summary=item.summary, incident_id=item.incident_id,
         organizations_considered=item.organizations_considered, existing_lead_id=item.existing_lead_id,
         cleanup_event_id=item.cleanup_event_id, cleanup_input=item.cleanup_input,
-        cleanup_assessment=item.cleanup_assessment, error_category=item.error_category);
+        cleanup_assessment=item.cleanup_assessment, error_category=item.error_category,
+        coordinator_input=item.coordinator_input, coordinator_decision=item.coordinator_decision,
+        delegated_run_id=item.delegated_run_id, delegation_result=item.delegation_result);
 }
 
 def intelligence_state() -> IntelligenceView {

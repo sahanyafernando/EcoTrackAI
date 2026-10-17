@@ -1,6 +1,6 @@
 """Shared response view; authority actions remain protected by server capabilities."""
 import type from contracts.response_views { ResponseBoardView }
-import from endpoints { incident_response_board, coordinate_response, accept_response }
+import from endpoints { incident_response_board, coordinate_response, accept_response, coordinate_workflow }
 
 def:pub ResponseBoard() -> JsxElement {
     has board: ResponseBoardView | None = None, loading: bool = True, busy: bool = False,
@@ -31,6 +31,19 @@ def:pub ResponseBoard() -> JsxElement {
         } except Exception { feedback = "Coordination could not complete. Refresh Agent Activity before retrying; the same request ID will be reused."; }
         finally { sending.current = False; busy = False; }
     }
+    async def orchestrate(id: str) -> None {
+        if sending.current { return; }
+        sending.current = True; busy = True; feedback = "";
+        key = "coordinator:" + id;
+        if key not in requestIds.current { requestIds.current[key] = str(globalThis.crypto.randomUUID()); }
+        try {
+            result = await coordinate_workflow(event_type="incident_confirmed", entity_id=id, request_id=requestIds.current[key]);
+            if result.status != "running" { del requestIds.current[key]; }
+            feedback = result.error_summary if result.status == "failed" else "Coordinator: " + result.summary + " See Agent Activity for the handoff.";
+            await load();
+        } except Exception { feedback = "Coordinator request failed. Check Agent Activity before retrying; the request ID is retained."; }
+        finally { sending.current = False; busy = False; }
+    }
     async def assign(id: str, org: str, role: str, revision: int, run: str) -> None {
         if sending.current { return; }
         sending.current = True; busy = True; feedback = "";
@@ -58,7 +71,7 @@ def:pub ResponseBoard() -> JsxElement {
             {item.lead is not None and <p className="notice">Lead response already assigned. Join as Support through Central Authority.</p>}
             <p><strong>Support: </strong>{", ".join([support.organization_name for support in item.supports]) if len(item.supports) > 0 else "None assigned"}</p>
             {not board.authority and <p>Your organization: <span className="badge">{item.own_role}</span></p>}
-            {board.authority and <div><button disabled={busy or loading} onClick={lambda { coordinate(item.incident_id); }}>Run Response Coordination</button>
+            {board.authority and <div><button disabled={busy or loading} onClick={lambda { coordinate(item.incident_id); }}>Run Response Coordination</button><button className="quiet" disabled={busy or loading} onClick={lambda { orchestrate(item.incident_id); }}>Run Coordinator</button>
                 {[<div key={recommendation.run_id}><p className="details">{recommendation.reasoning_summary}</p>
                     {recommendation.lead_organization_id != "" and <div className="actions"><p>Recommended Lead: {organizationName(recommendation.lead_organization_id)}</p><button disabled={busy or loading or item.lead is not None} onClick={lambda { assign(item.incident_id, recommendation.lead_organization_id, "lead", item.revision, recommendation.run_id); }}>Accept Lead</button></div>}
                     {[<div key={id} className="actions"><p>Recommended Support: {organizationName(id)}</p><button className="quiet" disabled={busy or loading or any([support.organization_id == id for support in item.supports])} onClick={lambda { assign(item.incident_id, id, "support", item.revision, recommendation.run_id); }}>Add Support</button></div> for id in recommendation.support_organization_ids]}

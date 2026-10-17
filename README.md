@@ -459,3 +459,51 @@ run. Closing an event produces a failed invalid-state run without a model call.
 
 Task 8 Coordinator Agent, automatic execution of advice, event rescheduling/editing,
 notifications, rewards, analytics and messaging remain deferred.
+
+## Multi-Agent Coordinator (Task 8)
+
+Central Authority can explicitly route a confirmed Incident or an existing cleanup
+through **Coordinator Agent → one specialist**. The Coordinator collects trusted
+state, makes **one native byLLM structured routing request**, rereads state, validates
+an allowlisted action/target/entity, delegates once, checks the result and records
+AgentRun/AgentDecision. There is no recursive agent loop or automatic event bus.
+
+Supported contexts are `incident_confirmed`, `cleanup_created` and
+`volunteer_state_changed`. Allowed actions are `run_response_coordination`,
+`run_cleanup_volunteer`, `no_action` and `require_human_review`; targets are
+`response_coordination`, `cleanup_volunteer` or `none` with validated pairings.
+Existing-Lead Incidents cannot route to a new Lead recommendation through Coordinator.
+Response recommendations still require Authority acceptance; Coordinator assigns nobody.
+
+Use the same existing `BYLLM_DEFAULT_MODEL` and provider key settings as Task 7
+(`GOOGLE_API_KEY`, or the runtime-supported `GEMINI_API_KEY`). No new provider,
+secret or environment flag is required. A delegated specialist may make its own
+one model request. Missing configuration/provider failures produce failed audit
+records rather than fabricated advice.
+
+Manual browser demonstration:
+
+1. **Authority → Incident Review → Response Coordination → Run Coordinator** on a
+   confirmed Incident with no Lead. Refresh responses to inspect the real specialist
+   recommendation, then use the existing **Accept Lead / Add Support** workflow.
+2. Lead creates a planned cleanup requiring 8 volunteers; three accounts join.
+3. **Authority → Incident Review → Inspect cleanup events → Refresh events →
+   Run Coordinator** on that event sends `cleanup_created`. The specialist assessment
+   shows real required/joined/missing counts, risk, rationale and recommended actions.
+4. One Citizen withdraws. On the Authority event card, **Refresh events → Replan
+   with Coordinator** sends `volunteer_state_changed`, using current 8/2/6 state.
+5. **Authority → Agent Activity → Refresh intelligence** shows Coordinator event,
+   input counts, selected action/target, concise rationale, delegation result and
+   specialist run ID, plus the actual specialist run and assessment.
+
+Only Authority has `agent:coordinate`. The direct Cleanup AI endpoint remains
+verified-active-Lead-only. Authority's internal Coordinator handoff separately
+checks its permission and the event's active verified Lead; it cannot manage the
+cleanup, change participation or assign organizations. Lead users can read advisory
+cleanup assessments for their own currently led Incident, including Authority-delegated
+ones. Citizens/Support cannot read that planning history. Original Reports, Incident
+confirmation, organization verification and one-Lead assignment rules are unchanged.
+
+Coordinator tests use native MockLLM for both routing and specialist reasoning.
+Automatic triggers, background queues, crash recovery and complex scheduling remain
+deferred; all execution here is an explicit Authority action.

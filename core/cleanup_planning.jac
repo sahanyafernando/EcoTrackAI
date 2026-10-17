@@ -9,7 +9,16 @@ glob CLEANUP_RISK_LEVELS: list[str] = ["low", "medium", "high", "critical"];
 glob CLEANUP_RECOMMENDATIONS: list[str] = ["sufficient_capacity", "recruit_volunteers",
     "request_support", "reschedule_consideration", "combined_recovery"];
 
-def require_cleanup_planner(event_id: str) -> None {
+def require_cleanup_planner(event_id: str, authority_delegation: bool = False) -> None {
+    if authority_delegation {
+        require_capability("agent:coordinate");
+        context = collect_cleanup_context(event_id);
+        import from core.responses { verified_organizations }
+        if context.lead_organization_id not in [org.id for org in verified_organizations()] {
+            raise PermissionError("Delegation requires a verified active Lead.");
+        }
+        return;
+    }
     require_capability("agent:plan_cleanup");
     event = find_event(event_id);
     if not manages_incident(event.incident_id, event.lead_organization_id) {
@@ -17,7 +26,7 @@ def require_cleanup_planner(event_id: str) -> None {
     }
 }
 def collect_cleanup_context(event_id: str) -> CleanupPlanningContext {
-    # Authority may inspect deterministic state; execution separately requires Lead.
+    # Authority may inspect; direct execution remains Lead-only. Coordinator delegation is explicitly guarded.
     event = find_event(event_id);
     if not is_authority() { require_cleanup_planner(event_id); }
     capacity = get_event_capacity_state(event_id);
@@ -76,7 +85,7 @@ def validate_cleanup_assessment(value: CleanupAssessment, context: CleanupPlanni
 def latest_cleanup_plans() -> list[CleanupPlanningView] {
     require_capability("cleanup:read");
     runs = ([root.shared ->:IntelligenceIndex:-> [?:AgentRun, -started_at]] if is_authority()
-        else [root --> [?:AgentRun, -started_at]]);
+        else [root.shared ->:IntelligenceIndex:-> [?:AgentRun, -started_at]]);
     seen: set[str] = set();
     result: list[CleanupPlanningView] = [];
     for run in runs {

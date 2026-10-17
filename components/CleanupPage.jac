@@ -1,7 +1,7 @@
 """Shared cleanup events page; all ownership and participation checks run in core."""
 import type from contracts.cleanup_views { CleanupBoardView }
 import type from contracts.cleanup_ai_views { CleanupPlanningView }
-import from endpoints { cleanup_events, create_cleanup_event, manage_cleanup_event, join_cleanup, withdraw_cleanup, run_cleanup_ai, cleanup_ai_assessments }
+import from endpoints { cleanup_events, create_cleanup_event, manage_cleanup_event, join_cleanup, withdraw_cleanup, run_cleanup_ai, cleanup_ai_assessments, coordinate_workflow }
 import from .DateTime { DateTime }
 import from .ReportCard { LocationLink }
 
@@ -18,9 +18,9 @@ def:pub CleanupAssessmentPanel(item: CleanupPlanningView) -> JsxElement {
     </article>
 }
 
-def:pub CleanupPage() -> JsxElement {
+def:pub CleanupPage(authority: bool = False) -> JsxElement {
     has board: CleanupBoardView | None = None, plans: list[CleanupPlanningView] = [], planError: str = "",
-        planRequests: Ref[dict[str, str]] = Ref({}), loading: bool = True, busy: bool = False,
+        planRequests: Ref[dict[str, str]] = Ref({}), coordinatorRequests: Ref[dict[str, str]] = Ref({}), loading: bool = True, busy: bool = False,
         error: str = "", feedback: str = "", incidentId: str = "", title: str = "",
         description: str = "", location: str = "", latitude: str = "", longitude: str = "",
         scheduledAt: str = "", required: str = "8", sending: Ref[bool] = Ref(False);
@@ -72,6 +72,19 @@ def:pub CleanupPage() -> JsxElement {
         } except Exception as failure { feedback = "Cleanup AI was not completed. Retry uses the same request ID. " + str(failure); }
         finally { sending.current = False; busy = False; }
     }
+    async def orchestrate(id: str, eventType: str) -> None {
+        if sending.current { return; }
+        sending.current = True; busy = True; feedback = "";
+        key = eventType + ":" + id;
+        if key not in coordinatorRequests.current { coordinatorRequests.current[key] = str(globalThis.crypto.randomUUID()); }
+        try {
+            result = await coordinate_workflow(event_type=eventType, entity_id=id, request_id=coordinatorRequests.current[key]);
+            if result.status != "running" { del coordinatorRequests.current[key]; }
+            feedback = result.error_summary if result.status == "failed" else "Coordinator: " + result.summary + " See Agent Activity for the handoff.";
+            await load();
+        } except Exception { feedback = "Coordinator request failed. Inspect Agent Activity before retrying; the request ID is retained."; }
+        finally { sending.current = False; busy = False; }
+    }
     <div>
         <section className="panel"><div className="actions"><div><p className="eyebrow">Community action</p><h2>Cleanup Events</h2><p>Join a real organization-led cleanup. Participation is linked to your current account.</p></div><button className="quiet" onClick={load} disabled={busy or loading}>Refresh events</button></div>
             {loading and <p role="status">Loading events…</p>}
@@ -109,6 +122,8 @@ def:pub CleanupPage() -> JsxElement {
                 {item.can_manage and item.status == "active" and <button className="quiet" disabled={busy or loading} onClick={lambda { act(item.event_id, "completed", item.revision); }}>Complete event</button>}
                 {item.can_manage and item.status in ["planned", "active"] and <button className="danger-outline" disabled={busy or loading} onClick={lambda { act(item.event_id, "cancelled", item.revision); }}>Cancel event</button>}
                 {item.can_manage and item.status in ["planned", "active"] and <button disabled={busy or loading} onClick={lambda { plan(item.event_id); }}>{"Request in progress…" if busy else "Run Cleanup AI"}</button>}
+                {authority and item.status in ["planned", "active"] and <button disabled={busy or loading} onClick={lambda { orchestrate(item.event_id, "cleanup_created"); }}>Run Coordinator</button>}
+                {authority and item.status in ["planned", "active"] and <button className="quiet" disabled={busy or loading} onClick={lambda { orchestrate(item.event_id, "volunteer_state_changed"); }}>Replan with Coordinator</button>}
             </div><p className="details muted">Event {item.event_id} · Incident {item.incident_id}</p>
             {[<CleanupAssessmentPanel key={assessment.run_id} item={assessment}/> for assessment in plans if assessment.event_id == item.event_id]}
         </section> for item in board.events]}

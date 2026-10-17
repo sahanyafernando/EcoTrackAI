@@ -13,10 +13,17 @@ def:pub RunSummary(item: RunView) -> JsxElement {
         <div className="actions"><h3>{item.agent_name}</h3><span className={"badge " + ("rejected" if item.status == "failed" else ("pending" if item.status == "running" else "verified"))}>{item.status}</span></div>
         <p className="muted"><DateTime value={item.started_at}/> · {item.model}</p>
         {item.incident_id == "" and <div className="button-row"><span>Reports examined: <strong>{item.reports_examined}</strong></span><span>Candidate relationships: <strong>{item.candidate_relationships}</strong></span><span>Candidate groups: <strong>{item.candidate_groups_examined}</strong></span><span>LLM requests: <strong>{item.llm_requests}</strong></span><span>Proposals created: <strong>{item.proposals_created}</strong></span></div>}
-        {item.incident_id != "" and item.cleanup_event_id == "" and <div><p className="details">Incident: {item.incident_id}</p><p>Verified organizations considered: {item.organizations_considered} · LLM requests: {item.llm_requests}</p><p className="details">Existing Lead check: {item.existing_lead_id if item.existing_lead_id != "" else "No active lead"}</p></div>}
+        {item.agent_name != "Coordinator Agent" and item.incident_id != "" and item.cleanup_event_id == "" and <div><p className="details">Incident: {item.incident_id}</p><p>Verified organizations considered: {item.organizations_considered} · LLM requests: {item.llm_requests}</p><p className="details">Existing Lead check: {item.existing_lead_id if item.existing_lead_id != "" else "No active lead"}</p></div>}
         {item.cleanup_event_id != "" and <div><p className="details">Cleanup event: {item.cleanup_event_id} · Incident: {item.incident_id}</p><p>LLM requests: {item.llm_requests}</p>
             {item.cleanup_input is not None and <p>Required: {item.cleanup_input.required_volunteers} · Joined: {item.cleanup_input.joined_volunteers} · Missing: {item.cleanup_input.remaining_volunteers}</p>}
             {item.cleanup_assessment is not None and <div><strong>Risk: {item.cleanup_assessment.risk_level.upper()}</strong><p>{item.cleanup_assessment.recommendation_type.replace("_", " ")}</p><ul>{[<li key={str(index)}>{action}</li> for (index, action) in enumerate(item.cleanup_assessment.recommended_actions)]}</ul></div>}
+            {item.error_category != "" and <p>Error category: {item.error_category}</p>}
+        </div>}
+        {item.coordinator_input is not None and <div><p>Coordinator LLM requests: {item.llm_requests}</p><p>Event: {item.coordinator_input.event_type.replace("_", " ")}</p><p className="details">Entity: {item.coordinator_input.entity_id}</p>
+            {item.coordinator_input.cleanup is not None and <p>Required: {item.coordinator_input.cleanup.required_volunteers} · Joined: {item.coordinator_input.cleanup.joined_volunteers} · Missing: {item.coordinator_input.cleanup.remaining_volunteers}</p>}
+            {item.coordinator_decision is not None and <div><p><strong>Action: </strong>{item.coordinator_decision.action.replace("_", " ")}</p><p>Target: {item.coordinator_decision.target_agent.replace("_", " ")}</p><p>{item.coordinator_decision.reason_summary}</p></div>}
+            <p>Delegation result: {item.delegation_result if item.delegation_result != "" else "Not completed"}</p>
+            {item.delegated_run_id != "" and <p className="details">Specialist run: {item.delegated_run_id}</p>}
             {item.error_category != "" and <p>Error category: {item.error_category}</p>}
         </div>}
         <p>{item.summary}</p>
@@ -136,7 +143,7 @@ def:pub IntelligencePage(activity: bool = False, onDemoChanged: Callable[[], Non
             </article> for item in incidents]}
         </section>}
         {not activity and <ResponseBoard key={str(len(incidents))}/>}
-        {not activity and <details className="panel"><summary>Inspect cleanup events</summary><CleanupPage/></details>}
+        {not activity and <details className="panel"><summary>Inspect cleanup events</summary><CleanupPage authority={True}/></details>}
         {state is not None and loadError == "" and activity and <section className="panel"><h2>Agent runs</h2>
             {[<div key={item.id}><RunSummary item={item}/><details><summary>Decision records</summary>
                 {[<article key={decision.id}><h4>{decision.decision_type.replace("_", " ")}</h4><p className="details">{decision.reasoning_summary}</p><p className="details">Reports: {", ".join(decision.report_ids)}</p>{decision.confidence is not None and <p>Model confidence: {round(decision.confidence * 100)}%</p>}
@@ -152,6 +159,6 @@ def:pub IntelligencePage(activity: bool = False, onDemoChanged: Callable[[], Non
                 {item.incident_id != "" and <p className="details">Incident: {item.incident_id}</p>}
             </article> for item in humanReviews]}
         </section>}
-        {activity and <section className="panel"><span className="badge planned">Not implemented yet</span><h3>Coordinator Agent</h3><p className="muted">Platform orchestration is deferred to Task 8.</p></section>}
+
     </div>
 }

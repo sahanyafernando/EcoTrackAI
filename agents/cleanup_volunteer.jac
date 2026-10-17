@@ -21,15 +21,16 @@ def assess_with_model(context: CleanupPlanningContext) -> CleanupAssessment {
     return assess_cleanup(context, configured_model());
 }
 def run_cleanup_planning(event_id: str, request_id: str,
-    assessor: Callable[[CleanupPlanningContext], CleanupAssessment] = assess_with_model) -> RunView {
-    require_cleanup_planner(event_id);
+    assessor: Callable[[CleanupPlanningContext], CleanupAssessment] = assess_with_model,
+    authority_delegation: bool = False) -> RunView {
+    require_cleanup_planner(event_id, authority_delegation);
     if not 16 <= len(request_id) <= 100 { raise ValueError("A request ID of 16–100 characters is required."); }
     if not analysis_lock.acquire(blocking=False) { raise ValueError("An agent or operation is running. Retry shortly."); }
     try {
         Jac.commit(); Jac.get_context().mem.read_barrier();
         memory = Jac.get_context().mem;
         if isinstance(memory, Session) { memory.ensure_writable_txn(); }
-        require_cleanup_planner(event_id);
+        require_cleanup_planner(event_id, authority_delegation);
         for previous in [root --> [?:AgentRun]] {
             if previous.agent_name == "Cleanup & Volunteer Agent" and previous.request_id == request_id {
                 if previous.cleanup_event_id != event_id { raise ValueError("Request ID belongs to another event."); }
@@ -60,7 +61,7 @@ def run_cleanup_planning(event_id: str, request_id: str,
                 if jid(current_run) == run_id { run = current_run; }
             }
             category = "stale_state";
-            require_cleanup_planner(event_id);
+            require_cleanup_planner(event_id, authority_delegation);
             current = collect_cleanup_context(event_id);
             if cleanup_context_signature(current) != signature { raise ValueError("Planning inputs changed during assessment."); }
             category = "invalid_output";

@@ -110,3 +110,8 @@ import from core.cleanup_planning { latest_cleanup_plans }
 import from agents.cleanup_volunteer { run_cleanup_planning }
 def:protect run_cleanup_ai(event_id: str, request_id: str) -> RunView { return run_cleanup_planning(event_id, request_id); }
 def:protect cleanup_ai_assessments() -> list[CleanupPlanningView] { return latest_cleanup_plans(); }
+
+import from agents.coordinator { run_coordinator }
+def:protect coordinate_workflow(event_type: str, entity_id: str, request_id: str) -> RunView {
+    return run_coordinator(event_type, entity_id, request_id);
+}

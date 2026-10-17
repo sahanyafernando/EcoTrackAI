@@ -22,7 +22,7 @@ obj AuthorityEnvironment {
         else { os.environ["ECOTRACK_AUTHORITY_ROOT_IDS"] = self.previous; }
     }
 }
-def prepare(client: JacTestClient, password: str) -> dict[str, any] {
+def prepare(client: JacTestClient, password: str, assign_responses: bool = True) -> dict[str, any] {
     assert client.register_user("citizen_a", password).ok;
     citizen = client._auth_token or "";
     for latitude in [6.9271, 6.9274] {
@@ -47,6 +47,11 @@ def prepare(client: JacTestClient, password: str) -> dict[str, any] {
             rpc(client, "review", {"organization_id": org["id"], "decision": "verified", "expected_revision": 1});
             if state == "suspended" { rpc(client, "review", {"organization_id": org["id"], "decision": "suspended", "expected_revision": 2}); }
         }
+    }
+    if not assign_responses {
+        return {"incident": incident, "authority": authority, "citizen": citizen, "second": second,
+            "lead": tokens["verified_a"], "lead_id": ids["verified_a"], "support": tokens["verified_b"],
+            "pending": tokens["pending"], "suspended": tokens["suspended"]};
     }
     run = rpc(client, "fixture_coordination", {"incident_id": incident, "request_id": secrets.token_urlsafe(24)});
     rec = rpc(client, "incident_response_board")["incidents"][0]["recommendations"][0];
